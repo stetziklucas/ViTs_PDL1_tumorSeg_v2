@@ -1,0 +1,19 @@
+# Milestone 01 — sparse supervision acceptance
+outputs/reports_pf0229_accept
+
+# Milestone 02 — single-image runner / class-aware reporting baseline
+outputs/reports_pf0229_onecmd_crd
+outputs/reports_pf0213
+
+# Milestone 03 — first successful shared-cohort training
+outputs/reports_training_pfz083_shared_smoke
+outputs/reports_pfz083_shared_smoke__pf0213
+outputs/reports_pfz083_shared_smoke__pf0229
+
+# Milestone 04 — first stable consolidated project-first GUI workflow
+outputs/reports_training_training_20260430_000442
+outputs/reports_training_20260430_000442__pfz083_mos634-pd_ml1610213_20161010_pd-l1
+outputs/reports_training_20260430_000442__pfz083_mos634-pd_ml1610229_20161010_pd-l1
+
+# Optional — one useful GUI single-image reference point
+outputs/reports_pfz083_gui_20260429_201659

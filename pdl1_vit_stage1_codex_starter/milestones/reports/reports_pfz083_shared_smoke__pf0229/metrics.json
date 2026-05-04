@@ -1,0 +1,38 @@
+{
+  "artifacts": {
+    "metrics": "outputs/reports_pfz083_shared_smoke__pf0229/metrics.json",
+    "overlay": "outputs/overlays_pfz083_shared_smoke__pf0229/overlay.png",
+    "pixel_prob_map": "outputs/maps_pfz083_shared_smoke__pf0229_fused/pixel_prob_map.png",
+    "positive_mask": "outputs/masks_pfz083_shared_smoke__pf0229/positive_mask.png"
+  },
+  "image_id": "PFZ083 MOS634-PD ML1610229 20161010 PD-L1",
+  "image_loader_backend": "openslide",
+  "limitations_or_fallbacks": [],
+  "original_image_shape_hw": [
+    23703,
+    29880
+  ],
+  "output_space_note": "All masks/maps/overlay are exported in working image space (selected SVS level when applicable).",
+  "pixel_feature_spec_path": "models/pixel_classifier_pfz083_shared_smoke_shared/pixel_feature_spec.json",
+  "pixel_model_path": "models/pixel_classifier_pfz083_shared_smoke_shared/pixel_model.pkl",
+  "positive_area_px": 2195,
+  "positive_fraction_of_roi": 0.6476836825022131,
+  "roi_area_px": 3389,
+  "roi_mask_path": "data/annotations/roi_masks/PFZ083 MOS634-PD ML1610229 20161010 PD-L1_roi_mask.png",
+  "roi_mask_transform": "nearest_uniform_scale",
+  "source_image_path": "data/raw/PFZ083 MOS634-PD ML1610229 20161010 PD-L1.svs",
+  "svs_level": 2,
+  "svs_level_downsample": 8.00118163403106,
+  "thresholds": {
+    "pixel_prob_gt": 0.55,
+    "tile_prior_gt": 0.6
+  },
+  "tile_prior_source": "outputs/maps_pfz083_shared_smoke__pf0229/tile_probabilities.csv",
+  "tissue_mask_source": "outputs/tiles_pfz083_shared_smoke__pf0229/PFZ083 MOS634-PD ML1610229 20161010 PD-L1_tissue_mask.png",
+  "tissue_mask_transform": "identity",
+  "working_coordinate_space": "svs_level_pixels_xywh",
+  "working_image_shape_hw": [
+    2962,
+    3735
+  ]
+}

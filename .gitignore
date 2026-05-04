@@ -1,0 +1,7 @@
+pdl1_vit_stage1_codex_starter/.venv/
+pdl1_vit_stage1_codex_starter/data/raw/
+pdl1_vit_stage1_codex_starter/outputs/
+pdl1_vit_stage1_codex_starter/models/
+**/__pycache__/
+**/*.pyc
+.DS_Store

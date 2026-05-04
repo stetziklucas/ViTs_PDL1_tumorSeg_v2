@@ -1,0 +1,53 @@
+stage1_runner_start_utc=2026-04-17T23:18:18+00:00
+{"readiness": {"next_action": "You can continue to downstream Stage 1 CLI steps.", "notes": ["This is an annotation-readiness check only; it is not a model-quality or validation check.", "Sparse annotations are accepted with current config (allow_sparse_roi_seed_tiles=true)."], "pixel_counts": {"Ignore": 286073, "Negative_Tumor": 52264, "NonTumor": 111043, "Positive_Tumor": 165251}, "polygon_counts": {"Ignore": 3, "Negative_Tumor": 3, "NonTumor": 3, "Positive_Tumor": 3}, "roi_positive_pixels": 217539, "status_code": "READY", "status_label": "Ready", "summary_message": "Annotations are sufficient to continue with Stage 1 training/inference steps."}}
+[step] extract_tiles: /home/stetzik_lucas/ViTs_PDL1_tumorSeg/pdl1_vit_stage1_codex_starter/.venv/bin/python scripts/extract_tiles.py --config config/base.yaml --image-id 'PFZ083 MOS634-PD ML1610229 20161010 PD-L1' --input data/raw --annotations-dir data/annotations --output-dir outputs/tiles_pf0229_onecmd_crd
+WARNING ROI mask geometry (23703, 29880) does not match loaded image shape (2962, 3735). Resizing ROI mask with nearest-neighbor.
+INFO Wrote tile manifest: outputs/tiles_pf0229_onecmd_crd/tile_manifest.csv
+INFO Wrote tile coords: outputs/tiles_pf0229_onecmd_crd/tile_coords.npy
+INFO Wrote tissue mask: outputs/tiles_pf0229_onecmd_crd/PFZ083 MOS634-PD ML1610229 20161010 PD-L1_tissue_mask.png
+INFO Image loader=openslide svs_level=2 downsample=8.001 shape_hw=(2962, 3735)
+INFO Accepted tiles: 11
+INFO Acceptance breakdown | roi_threshold=10 sparse_roi_fallback=1
+[step] embed_vit: /home/stetzik_lucas/ViTs_PDL1_tumorSeg/pdl1_vit_stage1_codex_starter/.venv/bin/python scripts/embed_vit.py --config config/base.yaml --image-id 'PFZ083 MOS634-PD ML1610229 20161010 PD-L1' --input outputs/tiles_pf0229_onecmd_crd --raw-dir data/raw --output-dir outputs/embeddings_pf0229_onecmd_crd
+INFO Loading pretrained weights from Hugging Face hub (timm/vit_base_patch16_224.augreg2_in21k_ft_in1k)
+INFO HTTP Request: HEAD https://huggingface.co/timm/vit_base_patch16_224.augreg2_in21k_ft_in1k/resolve/main/model.safetensors "HTTP/1.1 302 Found"
+INFO [timm/vit_base_patch16_224.augreg2_in21k_ft_in1k] Safe alternative available for 'pytorch_model.bin' (as 'model.safetensors'). Loading weights using safetensors.
+INFO Wrote embeddings: outputs/embeddings_pf0229_onecmd_crd/embeddings.npy
+INFO Embedding shape: (11, 768)
+INFO Image loader=openslide svs_level=2 downsample=8.001
+INFO Wrote embedding index manifest: outputs/embeddings_pf0229_onecmd_crd/tile_manifest_with_embeddings_index.csv
+[step] make_tile_labels: /home/stetzik_lucas/ViTs_PDL1_tumorSeg/pdl1_vit_stage1_codex_starter/.venv/bin/python scripts/make_tile_labels.py --config config/base.yaml --image-id 'PFZ083 MOS634-PD ML1610229 20161010 PD-L1' --annotations-dir data/annotations --tiles-dir outputs/tiles_pf0229_onecmd_crd --embeddings-dir outputs/embeddings_pf0229_onecmd_crd --output-dir outputs/tiles_pf0229_onecmd_crd
+INFO Authoritative target mask geometry | image_id=PFZ083 MOS634-PD ML1610229 20161010 PD-L1 source=tile_manifest_meta.image_hw target_hw=(2962, 3735)
+INFO Annotation-mask geometry | image_id=PFZ083 MOS634-PD ML1610229 20161010 PD-L1 source_hw=(23703, 29880) target_hw=(2962, 3735)
+INFO Mask-space metadata | image_id=PFZ083 MOS634-PD ML1610229 20161010 PD-L1 tile_space=svs_level_pixels_xywh svs_level_dims_wh=[3735, 2962] svs_level0_dims_wh=[29880, 23703] svs_level_downsample=8.00118163403106
+INFO Mask transform | image_id=PFZ083 MOS634-PD ML1610229 20161010 PD-L1 transform=level0_to_tile_space_resize source_hw=(23703, 29880) target_hw=(2962, 3735) scale_y=0.124963 scale_x=0.125000 interpolation=nearest
+INFO Annotation-mask geometry | image_id=PFZ083 MOS634-PD ML1610229 20161010 PD-L1 source_hw=(23703, 29880) target_hw=(2962, 3735)
+INFO Mask-space metadata | image_id=PFZ083 MOS634-PD ML1610229 20161010 PD-L1 tile_space=svs_level_pixels_xywh svs_level_dims_wh=[3735, 2962] svs_level0_dims_wh=[29880, 23703] svs_level_downsample=8.00118163403106
+INFO Mask transform | image_id=PFZ083 MOS634-PD ML1610229 20161010 PD-L1 transform=level0_to_tile_space_resize source_hw=(23703, 29880) target_hw=(2962, 3735) scale_y=0.124963 scale_x=0.125000 interpolation=nearest
+INFO Inspected artifacts:
+INFO - ROI mask: data/annotations/roi_masks/PFZ083 MOS634-PD ML1610229 20161010 PD-L1_roi_mask.png
+INFO - Scribble mask: data/annotations/scribbles/PFZ083 MOS634-PD ML1610229 20161010 PD-L1_scribble_labels.png
+INFO - Tile manifest: outputs/tiles_pf0229_onecmd_crd/tile_manifest.csv
+INFO - Embedding manifest: outputs/embeddings_pf0229_onecmd_crd/tile_manifest_with_embeddings_index.csv
+INFO Wrote tile labels: outputs/tiles_pf0229_onecmd_crd/tile_labels.csv
+INFO Tile label counts | positive=6 negative=1 ignored=4
+[step] train_tile_head: /home/stetzik_lucas/ViTs_PDL1_tumorSeg/pdl1_vit_stage1_codex_starter/.venv/bin/python scripts/train_tile_head.py --config config/base.yaml --labels outputs/tiles_pf0229_onecmd_crd/tile_labels.csv --embeddings-dir outputs/embeddings_pf0229_onecmd_crd --output-dir models/tile_head_pf0229_onecmd_crd --maps-dir outputs/maps_pf0229_onecmd_crd --probs-manifest outputs/maps_pf0229_onecmd_crd/tile_probabilities.csv --smoke-image-id 'PFZ083 MOS634-PD ML1610229 20161010 PD-L1'
+INFO Wrote model artifact: models/tile_head_pf0229_onecmd_crd/tile_head.pkl
+INFO Wrote metrics: models/tile_head_pf0229_onecmd_crd/tile_cv_metrics.json
+INFO Wrote probability manifest: outputs/maps_pf0229_onecmd_crd/tile_probabilities.csv
+INFO Wrote tile probability map: outputs/maps_pf0229_onecmd_crd/tile_prob_map.png
+INFO Usable class counts: {'Negative_Context': 1, 'Positive_Context': 6, 'Ignore': 4}
+WARNING Only one image_id available; cross-image CV is not possible. Reported metrics are tile-level in-sample smoke metrics only.
+[step] train_pixel_classifier: /home/stetzik_lucas/ViTs_PDL1_tumorSeg/pdl1_vit_stage1_codex_starter/.venv/bin/python scripts/train_pixel_classifier.py --config config/base.yaml --image-id 'PFZ083 MOS634-PD ML1610229 20161010 PD-L1' --raw-dir data/raw --annotations-dir data/annotations --tiles-dir outputs/tiles_pf0229_onecmd_crd --tile-probabilities outputs/maps_pf0229_onecmd_crd/tile_probabilities.csv --output-dir models/pixel_classifier_pf0229_onecmd_crd
+INFO Wrote pixel model: models/pixel_classifier_pf0229_onecmd_crd/pixel_model.pkl
+INFO Wrote feature spec: models/pixel_classifier_pf0229_onecmd_crd/pixel_feature_spec.json
+INFO Training samples | positive=2574 negative=2556 total=5130
+[step] run_inference: /home/stetzik_lucas/ViTs_PDL1_tumorSeg/pdl1_vit_stage1_codex_starter/.venv/bin/python scripts/run_inference.py --config config/base.yaml --image-id 'PFZ083 MOS634-PD ML1610229 20161010 PD-L1' --raw-dir data/raw --annotations-dir data/annotations --tiles-dir outputs/tiles_pf0229_onecmd_crd --tile-probabilities outputs/maps_pf0229_onecmd_crd/tile_probabilities.csv --pixel-model models/pixel_classifier_pf0229_onecmd_crd/pixel_model.pkl --pixel-feature-spec models/pixel_classifier_pf0229_onecmd_crd/pixel_feature_spec.json --maps-dir outputs/maps_pf0229_onecmd_crd_fused --masks-dir outputs/masks_pf0229_onecmd_crd --overlays-dir outputs/overlays_pf0229_onecmd_crd --reports-dir outputs/reports_pf0229_onecmd_crd
+INFO Wrote pixel probability map: outputs/maps_pf0229_onecmd_crd_fused/pixel_prob_map.png
+INFO Wrote fused positive mask: outputs/masks_pf0229_onecmd_crd/positive_mask.png
+INFO Wrote overlay: outputs/overlays_pf0229_onecmd_crd/overlay.png
+INFO Wrote metrics: outputs/reports_pf0229_onecmd_crd/metrics.json
+[step] make_report: /home/stetzik_lucas/ViTs_PDL1_tumorSeg/pdl1_vit_stage1_codex_starter/.venv/bin/python scripts/make_report.py --config config/base.yaml --image-id 'PFZ083 MOS634-PD ML1610229 20161010 PD-L1' --annotations-dir data/annotations --tile-maps-dir outputs/maps_pf0229_onecmd_crd --pixel-maps-dir outputs/maps_pf0229_onecmd_crd_fused --masks-dir outputs/masks_pf0229_onecmd_crd --overlays-dir outputs/overlays_pf0229_onecmd_crd --reports-dir outputs/reports_pf0229_onecmd_crd --tile-model-dir models/tile_head_pf0229_onecmd_crd
+INFO Wrote report markdown: outputs/reports_pf0229_onecmd_crd/report_summary.md
+INFO Wrote report json: outputs/reports_pf0229_onecmd_crd/report_summary.json
+INFO Wrote one-page report: outputs/reports_pf0229_onecmd_crd/one_page_report.pdf

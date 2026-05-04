@@ -1,0 +1,52 @@
+{
+  "aggregate_class_metrics": {
+    "Negative_Tumor": {
+      "annotated_px": 0,
+      "fp_px": 0,
+      "specificity": 0.0,
+      "tn_px": 0
+    },
+    "NonTumor": {
+      "annotated_px": 0,
+      "fp_px": 0,
+      "specificity": 0.0,
+      "tn_px": 0
+    },
+    "Positive_Tumor": {
+      "annotated_px": 0,
+      "fn_px": 0,
+      "sensitivity": 0.0,
+      "tp_px": 0
+    }
+  },
+  "aggregate_metrics": {
+    "annotated_negative_px": 0,
+    "annotated_positive_px": 0,
+    "annotated_total_px": 0,
+    "f1": 0.0,
+    "false_negative_px": 0,
+    "false_positive_px": 0,
+    "precision": 0.0,
+    "sensitivity": 0.0,
+    "tn_px": 0,
+    "tp_px": 0,
+    "training_log_loss_mean": 0.0,
+    "training_log_loss_total": 0.0
+  },
+  "images_needing_attention": [],
+  "included_runs": [],
+  "run_tags_requested": [
+    "pfz083_shared_smoke__pf0213",
+    "pfz083_shared_smoke__pf0229"
+  ],
+  "skipped_runs": [
+    {
+      "reason": "missing required directories: tile_model_dir",
+      "run_tag": "pfz083_shared_smoke__pf0213"
+    },
+    {
+      "reason": "missing required directories: tile_model_dir",
+      "run_tag": "pfz083_shared_smoke__pf0229"
+    }
+  ]
+}

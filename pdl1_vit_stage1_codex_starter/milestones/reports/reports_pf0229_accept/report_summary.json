@@ -1,0 +1,33 @@
+{
+  "artifacts": {
+    "metrics_json": "outputs/reports_pf0229_accept/metrics.json",
+    "overlay": "outputs/overlays_pf0229_accept/overlay.png",
+    "pixel_prob_map": "outputs/maps_pf0229_accept_fused/pixel_prob_map.png",
+    "positive_mask": "outputs/masks_pf0229_accept/positive_mask.png",
+    "scribble_labels": "data/annotations/scribbles/PFZ083 MOS634-PD ML1610229 20161010 PD-L1_scribble_labels.png",
+    "tile_prob_map": "outputs/maps_pf0229_accept/tile_prob_map.png"
+  },
+  "development_metrics": {
+    "annotated_negative_px": 1648169,
+    "annotated_positive_px": 1101659,
+    "annotated_total_px": 2749828,
+    "f1": 0.7021334247540417,
+    "false_negative_px": 505672,
+    "false_positive_px": 0,
+    "image_id": "PFZ083 MOS634-PD ML1610229 20161010 PD-L1",
+    "precision": 1.0,
+    "scribble_transform": "nearest_uniform_scale",
+    "sensitivity": 0.5409904516733399,
+    "tn_px": 1648169,
+    "tp_px": 595987,
+    "training_log_loss_mean": 0.012471437702194464,
+    "training_log_loss_total": 34294.30859375,
+    "working_shape_hw": [
+      2962,
+      3735
+    ]
+  },
+  "image_id": "PFZ083 MOS634-PD ML1610229 20161010 PD-L1",
+  "run_tag": "pf0229_accept",
+  "working_space_note": "All masks/maps/overlay are exported in working image space (selected SVS level when applicable)."
+}

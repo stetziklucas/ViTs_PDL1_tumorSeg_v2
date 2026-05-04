@@ -1,0 +1,91 @@
+{"readiness": {"alias": "pf0213", "image_id": "PFZ083 MOS634-PD ML1610213 20161010 PD-L1", "next_action": "You can continue to downstream Stage 1 CLI steps.", "status_code": "READY", "status_label": "Ready", "summary_message": "Annotations are sufficient to continue with Stage 1 training/inference steps."}}
+{"readiness": {"alias": "pf0229", "image_id": "PFZ083 MOS634-PD ML1610229 20161010 PD-L1", "next_action": "You can continue to downstream Stage 1 CLI steps.", "status_code": "READY", "status_label": "Ready", "summary_message": "Annotations are sufficient to continue with Stage 1 training/inference steps."}}
+[step] pf0213:extract_tiles: /home/stetzik_lucas/ViTs_PDL1_tumorSeg/pdl1_vit_stage1_codex_starter/.venv/bin/python scripts/extract_tiles.py --config config/base.yaml --image-id 'PFZ083 MOS634-PD ML1610213 20161010 PD-L1' --input data/raw --annotations-dir data/annotations --output-dir outputs/tiles_pfz083_shared_smoke__pf0213
+WARNING ROI mask geometry (19874, 25896) does not match loaded image shape (2484, 3237). Resizing ROI mask with nearest-neighbor.
+INFO Wrote tile manifest: outputs/tiles_pfz083_shared_smoke__pf0213/tile_manifest.csv
+INFO Wrote tile coords: outputs/tiles_pfz083_shared_smoke__pf0213/tile_coords.npy
+INFO Wrote tissue mask: outputs/tiles_pfz083_shared_smoke__pf0213/PFZ083 MOS634-PD ML1610213 20161010 PD-L1_tissue_mask.png
+INFO Image loader=openslide svs_level=2 downsample=8.000 shape_hw=(2484, 3237)
+INFO Accepted tiles: 6
+INFO Acceptance breakdown | roi_threshold=6 sparse_roi_fallback=0
+[step] pf0213:embed_vit: /home/stetzik_lucas/ViTs_PDL1_tumorSeg/pdl1_vit_stage1_codex_starter/.venv/bin/python scripts/embed_vit.py --config config/base.yaml --image-id 'PFZ083 MOS634-PD ML1610213 20161010 PD-L1' --input outputs/tiles_pfz083_shared_smoke__pf0213 --raw-dir data/raw --output-dir outputs/embeddings_pfz083_shared_smoke__pf0213
+INFO Loading pretrained weights from Hugging Face hub (timm/vit_base_patch16_224.augreg2_in21k_ft_in1k)
+INFO HTTP Request: HEAD https://huggingface.co/timm/vit_base_patch16_224.augreg2_in21k_ft_in1k/resolve/main/model.safetensors "HTTP/1.1 302 Found"
+INFO [timm/vit_base_patch16_224.augreg2_in21k_ft_in1k] Safe alternative available for 'pytorch_model.bin' (as 'model.safetensors'). Loading weights using safetensors.
+INFO Wrote embeddings: outputs/embeddings_pfz083_shared_smoke__pf0213/embeddings.npy
+INFO Embedding shape: (6, 768)
+INFO Image loader=openslide svs_level=2 downsample=8.000
+INFO Wrote embedding index manifest: outputs/embeddings_pfz083_shared_smoke__pf0213/tile_manifest_with_embeddings_index.csv
+[step] pf0213:make_tile_labels: /home/stetzik_lucas/ViTs_PDL1_tumorSeg/pdl1_vit_stage1_codex_starter/.venv/bin/python scripts/make_tile_labels.py --config config/base.yaml --image-id 'PFZ083 MOS634-PD ML1610213 20161010 PD-L1' --annotations-dir data/annotations --tiles-dir outputs/tiles_pfz083_shared_smoke__pf0213 --embeddings-dir outputs/embeddings_pfz083_shared_smoke__pf0213 --output-dir outputs/tiles_pfz083_shared_smoke__pf0213
+INFO Authoritative target mask geometry | image_id=PFZ083 MOS634-PD ML1610213 20161010 PD-L1 source=tile_manifest_meta.image_hw target_hw=(2484, 3237)
+INFO Annotation-mask geometry | image_id=PFZ083 MOS634-PD ML1610213 20161010 PD-L1 source_hw=(19874, 25896) target_hw=(2484, 3237)
+INFO Mask-space metadata | image_id=PFZ083 MOS634-PD ML1610213 20161010 PD-L1 tile_space=svs_level_pixels_xywh svs_level_dims_wh=[3237, 2484] svs_level0_dims_wh=[25896, 19874] svs_level_downsample=8.000402576489533
+INFO Mask transform | image_id=PFZ083 MOS634-PD ML1610213 20161010 PD-L1 transform=level0_to_tile_space_resize source_hw=(19874, 25896) target_hw=(2484, 3237) scale_y=0.124987 scale_x=0.125000 interpolation=nearest
+INFO Annotation-mask geometry | image_id=PFZ083 MOS634-PD ML1610213 20161010 PD-L1 source_hw=(19874, 25896) target_hw=(2484, 3237)
+INFO Mask-space metadata | image_id=PFZ083 MOS634-PD ML1610213 20161010 PD-L1 tile_space=svs_level_pixels_xywh svs_level_dims_wh=[3237, 2484] svs_level0_dims_wh=[25896, 19874] svs_level_downsample=8.000402576489533
+INFO Mask transform | image_id=PFZ083 MOS634-PD ML1610213 20161010 PD-L1 transform=level0_to_tile_space_resize source_hw=(19874, 25896) target_hw=(2484, 3237) scale_y=0.124987 scale_x=0.125000 interpolation=nearest
+INFO Inspected artifacts:
+INFO - ROI mask: data/annotations/roi_masks/PFZ083 MOS634-PD ML1610213 20161010 PD-L1_roi_mask.png
+INFO - Scribble mask: data/annotations/scribbles/PFZ083 MOS634-PD ML1610213 20161010 PD-L1_scribble_labels.png
+INFO - Tile manifest: outputs/tiles_pfz083_shared_smoke__pf0213/tile_manifest.csv
+INFO - Embedding manifest: outputs/embeddings_pfz083_shared_smoke__pf0213/tile_manifest_with_embeddings_index.csv
+INFO Wrote tile labels: outputs/tiles_pfz083_shared_smoke__pf0213/tile_labels.csv
+INFO Tile label counts | positive=6 negative=0 ignored=0
+[step] pf0229:extract_tiles: /home/stetzik_lucas/ViTs_PDL1_tumorSeg/pdl1_vit_stage1_codex_starter/.venv/bin/python scripts/extract_tiles.py --config config/base.yaml --image-id 'PFZ083 MOS634-PD ML1610229 20161010 PD-L1' --input data/raw --annotations-dir data/annotations --output-dir outputs/tiles_pfz083_shared_smoke__pf0229
+WARNING ROI mask geometry (23703, 29880) does not match loaded image shape (2962, 3735). Resizing ROI mask with nearest-neighbor.
+INFO Wrote tile manifest: outputs/tiles_pfz083_shared_smoke__pf0229/tile_manifest.csv
+INFO Wrote tile coords: outputs/tiles_pfz083_shared_smoke__pf0229/tile_coords.npy
+INFO Wrote tissue mask: outputs/tiles_pfz083_shared_smoke__pf0229/PFZ083 MOS634-PD ML1610229 20161010 PD-L1_tissue_mask.png
+INFO Image loader=openslide svs_level=2 downsample=8.001 shape_hw=(2962, 3735)
+INFO Accepted tiles: 11
+INFO Acceptance breakdown | roi_threshold=10 sparse_roi_fallback=1
+[step] pf0229:embed_vit: /home/stetzik_lucas/ViTs_PDL1_tumorSeg/pdl1_vit_stage1_codex_starter/.venv/bin/python scripts/embed_vit.py --config config/base.yaml --image-id 'PFZ083 MOS634-PD ML1610229 20161010 PD-L1' --input outputs/tiles_pfz083_shared_smoke__pf0229 --raw-dir data/raw --output-dir outputs/embeddings_pfz083_shared_smoke__pf0229
+INFO Cache hit: embedding recomputation skipped.
+INFO Embeddings: outputs/embeddings_pfz083_shared_smoke__pf0229/embeddings.npy
+[step] pf0229:make_tile_labels: /home/stetzik_lucas/ViTs_PDL1_tumorSeg/pdl1_vit_stage1_codex_starter/.venv/bin/python scripts/make_tile_labels.py --config config/base.yaml --image-id 'PFZ083 MOS634-PD ML1610229 20161010 PD-L1' --annotations-dir data/annotations --tiles-dir outputs/tiles_pfz083_shared_smoke__pf0229 --embeddings-dir outputs/embeddings_pfz083_shared_smoke__pf0229 --output-dir outputs/tiles_pfz083_shared_smoke__pf0229
+INFO Authoritative target mask geometry | image_id=PFZ083 MOS634-PD ML1610229 20161010 PD-L1 source=tile_manifest_meta.image_hw target_hw=(2962, 3735)
+INFO Annotation-mask geometry | image_id=PFZ083 MOS634-PD ML1610229 20161010 PD-L1 source_hw=(23703, 29880) target_hw=(2962, 3735)
+INFO Mask-space metadata | image_id=PFZ083 MOS634-PD ML1610229 20161010 PD-L1 tile_space=svs_level_pixels_xywh svs_level_dims_wh=[3735, 2962] svs_level0_dims_wh=[29880, 23703] svs_level_downsample=8.00118163403106
+INFO Mask transform | image_id=PFZ083 MOS634-PD ML1610229 20161010 PD-L1 transform=level0_to_tile_space_resize source_hw=(23703, 29880) target_hw=(2962, 3735) scale_y=0.124963 scale_x=0.125000 interpolation=nearest
+INFO Annotation-mask geometry | image_id=PFZ083 MOS634-PD ML1610229 20161010 PD-L1 source_hw=(23703, 29880) target_hw=(2962, 3735)
+INFO Mask-space metadata | image_id=PFZ083 MOS634-PD ML1610229 20161010 PD-L1 tile_space=svs_level_pixels_xywh svs_level_dims_wh=[3735, 2962] svs_level0_dims_wh=[29880, 23703] svs_level_downsample=8.00118163403106
+INFO Mask transform | image_id=PFZ083 MOS634-PD ML1610229 20161010 PD-L1 transform=level0_to_tile_space_resize source_hw=(23703, 29880) target_hw=(2962, 3735) scale_y=0.124963 scale_x=0.125000 interpolation=nearest
+INFO Inspected artifacts:
+INFO - ROI mask: data/annotations/roi_masks/PFZ083 MOS634-PD ML1610229 20161010 PD-L1_roi_mask.png
+INFO - Scribble mask: data/annotations/scribbles/PFZ083 MOS634-PD ML1610229 20161010 PD-L1_scribble_labels.png
+INFO - Tile manifest: outputs/tiles_pfz083_shared_smoke__pf0229/tile_manifest.csv
+INFO - Embedding manifest: outputs/embeddings_pfz083_shared_smoke__pf0229/tile_manifest_with_embeddings_index.csv
+INFO Wrote tile labels: outputs/tiles_pfz083_shared_smoke__pf0229/tile_labels.csv
+INFO Tile label counts | positive=6 negative=1 ignored=4
+[step] shared_train_tile_head: /home/stetzik_lucas/ViTs_PDL1_tumorSeg/pdl1_vit_stage1_codex_starter/.venv/bin/python scripts/train_tile_head.py --config config/base.yaml --cohort-file outputs/reports_training_pfz083_shared_smoke/tile_training_cases.csv --output-dir models/tile_head_pfz083_shared_smoke_shared
+INFO Scored alias=pf0213 image_id=PFZ083 MOS634-PD ML1610213 20161010 PD-L1 -> outputs/maps_pfz083_shared_smoke__pf0213/tile_probabilities.csv
+INFO Scored alias=pf0229 image_id=PFZ083 MOS634-PD ML1610229 20161010 PD-L1 -> outputs/maps_pfz083_shared_smoke__pf0229/tile_probabilities.csv
+INFO Wrote model artifact: models/tile_head_pfz083_shared_smoke_shared/tile_head.pkl
+INFO Wrote metrics: models/tile_head_pfz083_shared_smoke_shared/tile_cv_metrics.json
+[step] shared_train_pixel_classifier: /home/stetzik_lucas/ViTs_PDL1_tumorSeg/pdl1_vit_stage1_codex_starter/.venv/bin/python scripts/train_pixel_classifier.py --config config/base.yaml --cohort-file outputs/reports_training_pfz083_shared_smoke/pixel_training_cases.csv --raw-dir data/raw --annotations-dir data/annotations --output-dir models/pixel_classifier_pfz083_shared_smoke_shared
+INFO Wrote pixel model: models/pixel_classifier_pfz083_shared_smoke_shared/pixel_model.pkl
+INFO Wrote feature spec: models/pixel_classifier_pfz083_shared_smoke_shared/pixel_feature_spec.json
+INFO Training samples | positive=8634 negative=7322 total=15956
+[step] pf0213:run_inference: /home/stetzik_lucas/ViTs_PDL1_tumorSeg/pdl1_vit_stage1_codex_starter/.venv/bin/python scripts/run_inference.py --config config/base.yaml --image-id 'PFZ083 MOS634-PD ML1610213 20161010 PD-L1' --raw-dir data/raw --annotations-dir data/annotations --tiles-dir outputs/tiles_pfz083_shared_smoke__pf0213 --tile-probabilities outputs/maps_pfz083_shared_smoke__pf0213/tile_probabilities.csv --pixel-model models/pixel_classifier_pfz083_shared_smoke_shared/pixel_model.pkl --pixel-feature-spec models/pixel_classifier_pfz083_shared_smoke_shared/pixel_feature_spec.json --maps-dir outputs/maps_pfz083_shared_smoke__pf0213_fused --masks-dir outputs/masks_pfz083_shared_smoke__pf0213 --overlays-dir outputs/overlays_pfz083_shared_smoke__pf0213 --reports-dir outputs/reports_pfz083_shared_smoke__pf0213
+INFO Wrote pixel probability map: outputs/maps_pfz083_shared_smoke__pf0213_fused/pixel_prob_map.png
+INFO Wrote fused positive mask: outputs/masks_pfz083_shared_smoke__pf0213/positive_mask.png
+INFO Wrote overlay: outputs/overlays_pfz083_shared_smoke__pf0213/overlay.png
+INFO Wrote metrics: outputs/reports_pfz083_shared_smoke__pf0213/metrics.json
+[step] pf0213:make_report: /home/stetzik_lucas/ViTs_PDL1_tumorSeg/pdl1_vit_stage1_codex_starter/.venv/bin/python scripts/make_report.py --config config/base.yaml --image-id 'PFZ083 MOS634-PD ML1610213 20161010 PD-L1' --annotations-dir data/annotations --tile-maps-dir outputs/maps_pfz083_shared_smoke__pf0213 --pixel-maps-dir outputs/maps_pfz083_shared_smoke__pf0213_fused --masks-dir outputs/masks_pfz083_shared_smoke__pf0213 --overlays-dir outputs/overlays_pfz083_shared_smoke__pf0213 --reports-dir outputs/reports_pfz083_shared_smoke__pf0213 --tile-model-dir models/tile_head_pfz083_shared_smoke_shared --model-scope shared_project_model --shared-model-tag pfz083_shared_smoke --training-image-count 2 --included-training-aliases pf0213,pf0229
+INFO Wrote report markdown: outputs/reports_pfz083_shared_smoke__pf0213/report_summary.md
+INFO Wrote report json: outputs/reports_pfz083_shared_smoke__pf0213/report_summary.json
+INFO Wrote one-page report: outputs/reports_pfz083_shared_smoke__pf0213/one_page_report.pdf
+[step] pf0229:run_inference: /home/stetzik_lucas/ViTs_PDL1_tumorSeg/pdl1_vit_stage1_codex_starter/.venv/bin/python scripts/run_inference.py --config config/base.yaml --image-id 'PFZ083 MOS634-PD ML1610229 20161010 PD-L1' --raw-dir data/raw --annotations-dir data/annotations --tiles-dir outputs/tiles_pfz083_shared_smoke__pf0229 --tile-probabilities outputs/maps_pfz083_shared_smoke__pf0229/tile_probabilities.csv --pixel-model models/pixel_classifier_pfz083_shared_smoke_shared/pixel_model.pkl --pixel-feature-spec models/pixel_classifier_pfz083_shared_smoke_shared/pixel_feature_spec.json --maps-dir outputs/maps_pfz083_shared_smoke__pf0229_fused --masks-dir outputs/masks_pfz083_shared_smoke__pf0229 --overlays-dir outputs/overlays_pfz083_shared_smoke__pf0229 --reports-dir outputs/reports_pfz083_shared_smoke__pf0229
+INFO Wrote pixel probability map: outputs/maps_pfz083_shared_smoke__pf0229_fused/pixel_prob_map.png
+INFO Wrote fused positive mask: outputs/masks_pfz083_shared_smoke__pf0229/positive_mask.png
+INFO Wrote overlay: outputs/overlays_pfz083_shared_smoke__pf0229/overlay.png
+INFO Wrote metrics: outputs/reports_pfz083_shared_smoke__pf0229/metrics.json
+[step] pf0229:make_report: /home/stetzik_lucas/ViTs_PDL1_tumorSeg/pdl1_vit_stage1_codex_starter/.venv/bin/python scripts/make_report.py --config config/base.yaml --image-id 'PFZ083 MOS634-PD ML1610229 20161010 PD-L1' --annotations-dir data/annotations --tile-maps-dir outputs/maps_pfz083_shared_smoke__pf0229 --pixel-maps-dir outputs/maps_pfz083_shared_smoke__pf0229_fused --masks-dir outputs/masks_pfz083_shared_smoke__pf0229 --overlays-dir outputs/overlays_pfz083_shared_smoke__pf0229 --reports-dir outputs/reports_pfz083_shared_smoke__pf0229 --tile-model-dir models/tile_head_pfz083_shared_smoke_shared --model-scope shared_project_model --shared-model-tag pfz083_shared_smoke --training-image-count 2 --included-training-aliases pf0213,pf0229
+INFO Wrote report markdown: outputs/reports_pfz083_shared_smoke__pf0229/report_summary.md
+INFO Wrote report json: outputs/reports_pfz083_shared_smoke__pf0229/report_summary.json
+INFO Wrote one-page report: outputs/reports_pfz083_shared_smoke__pf0229/one_page_report.pdf
+[step] make_project_report: /home/stetzik_lucas/ViTs_PDL1_tumorSeg/pdl1_vit_stage1_codex_starter/.venv/bin/python scripts/make_project_report.py --config config/base.yaml --annotations-dir data/annotations --output-dir outputs/reports_training_pfz083_shared_smoke --run-tag pfz083_shared_smoke__pf0213 --run-tag pfz083_shared_smoke__pf0229
+WARNING Skipping run_tag=pfz083_shared_smoke__pf0213: missing required directories: tile_model_dir
+WARNING Skipping run_tag=pfz083_shared_smoke__pf0229: missing required directories: tile_model_dir
+INFO Wrote project training report JSON: outputs/reports_training_pfz083_shared_smoke/training_summary.json
+INFO Wrote project training report markdown: outputs/reports_training_pfz083_shared_smoke/training_summary.md

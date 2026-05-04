@@ -1,0 +1,86 @@
+project:
+  name: pdl1_vit_stage1
+  stage: stage1
+  description: "Bootstrap scaffold for PD-L1 ViT proof-of-concept pipeline"
+
+paths:
+  raw_data_dir: data/raw
+  manifest_dir: data/manifests
+  annotations_dir: data/annotations
+  qc_dir: data/qc
+  models_dir: models
+  outputs_dir: outputs
+
+tiling:
+  tile_size_px: 224
+  tile_stride_px: 112
+  min_tissue_fraction: 0.30
+  min_roi_fraction: 0.001
+  allow_sparse_roi_seed_tiles: true
+  tissue_sat_threshold: 0.08
+  tissue_value_threshold: 0.95
+  svs_max_dimension: 4096
+
+classes:
+  names:
+    - Positive_Tumor
+    - Negative_Tumor
+    - NonTumor
+    - Ignore
+  label_encoding:
+    Unlabeled: 0
+    Positive_Tumor: 1
+    Negative_Tumor: 2
+    NonTumor: 3
+    Ignore: 4
+
+vit:
+  frozen: true
+  backend: timm
+  model_name: "vit_base_patch16_224"
+  device: "cpu"
+  batch_size: 32
+  embedding_format: npy
+
+tile_labels:
+  min_labeled_fraction: 0.05
+  positive_min_fraction: 0.20
+  negative_min_fraction: 0.20
+  mixed_max_fraction: 0.10
+  mixed_dominant_purity_min: 0.75
+  sparse_min_sample_weight: 0.10
+  mixed_dominant_weight_scale: 0.75
+
+tile_head:
+  model_type: logistic_regression
+  positive_threshold: 0.60
+  equalize_image_weight: true
+
+pixel_classifier:
+  max_samples_per_image_per_class: 75000
+  equalize_image_class_sampling: true
+
+pixel_model:
+  model_type: random_forest
+  features:
+    - rgb
+    - hed
+    - gaussian
+    - local_var
+    - tile_prior
+  positive_threshold: 0.55
+
+fusion:
+  use_tissue_mask: true
+  use_roi_mask: true
+  use_tile_prior: true
+  output_mask_filename: positive_mask.png
+
+outputs:
+  tiles_dir: outputs/tiles
+  embeddings_dir: outputs/embeddings
+  maps_dir: outputs/maps
+  masks_dir: outputs/masks
+  overlays_dir: outputs/overlays
+  reports_dir: outputs/reports
+  final_positive_mask_filename: positive_mask.png

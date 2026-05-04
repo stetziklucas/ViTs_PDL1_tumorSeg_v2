@@ -1,0 +1,112 @@
+{
+  "artifacts": {
+    "metrics_json": "outputs/reports_pf0213/metrics.json",
+    "overlay": "outputs/overlays_pf0213/overlay.png",
+    "pixel_prob_map": "outputs/maps_pf0213_fused/pixel_prob_map.png",
+    "positive_mask": "outputs/masks_pf0213/positive_mask.png",
+    "scribble_labels": "data/annotations/scribbles/PFZ083 MOS634-PD ML1610213 20161010 PD-L1_scribble_labels.png",
+    "tile_prob_map": "outputs/maps_pf0213/tile_prob_map.png"
+  },
+  "class_metrics": {
+    "Negative_Tumor": {
+      "annotated_px": 2114129,
+      "fp_px": 0,
+      "specificity": 1.0,
+      "tn_px": 2114129
+    },
+    "NonTumor": {
+      "annotated_px": 0,
+      "fp_px": 0,
+      "specificity": 0.0,
+      "tn_px": 0
+    },
+    "Positive_Tumor": {
+      "annotated_px": 1906902,
+      "fn_px": 720805,
+      "sensitivity": 0.6220020745691178,
+      "tp_px": 1186097
+    }
+  },
+  "development_metrics": {
+    "annotated_negative_px": 2114129,
+    "annotated_positive_px": 1906902,
+    "annotated_total_px": 4021031,
+    "class_metrics": {
+      "Negative_Tumor": {
+        "annotated_px": 2114129,
+        "fp_px": 0,
+        "specificity": 1.0,
+        "tn_px": 2114129
+      },
+      "NonTumor": {
+        "annotated_px": 0,
+        "fp_px": 0,
+        "specificity": 0.0,
+        "tn_px": 0
+      },
+      "Positive_Tumor": {
+        "annotated_px": 1906902,
+        "fn_px": 720805,
+        "sensitivity": 0.6220020745691178,
+        "tp_px": 1186097
+      }
+    },
+    "f1": 0.7669559543989507,
+    "false_negative_px": 720805,
+    "false_positive_px": 0,
+    "image_id": "PFZ083 MOS634-PD ML1610213 20161010 PD-L1",
+    "precision": 1.0,
+    "scribble_transform": "nearest_uniform_scale",
+    "sensitivity": 0.6220020745691178,
+    "tn_px": 2114129,
+    "tp_px": 1186097,
+    "training_log_loss_mean": 0.06710675539432548,
+    "training_log_loss_total": 269838.34375,
+    "working_shape_hw": [
+      2484,
+      3237
+    ]
+  },
+  "error_pattern": "Conservative / false-negative dominant",
+  "evaluation_scope": "Annotated-region development metrics only; not whole-slide validation",
+  "image_id": "PFZ083 MOS634-PD ML1610213 20161010 PD-L1",
+  "next_review_focus": "Review undercalled annotated positive tumor regions and add representative positive supervision.",
+  "result_description": "Tumor-enriched PD-L1-positive mask in working image space",
+  "run_tag": "pf0213",
+  "supervision_audit": {
+    "accepted_tile_count": 162,
+    "annotated_pixel_counts": {
+      "Ignore": 0,
+      "Negative_Tumor": 135318204,
+      "NonTumor": 0,
+      "Positive_Tumor": 122037774,
+      "Unlabeled": 257301126
+    },
+    "ignored_tile_count": 16,
+    "ignored_tile_reasons": {
+      "mixed_or_ambiguous": 16
+    },
+    "ignored_tile_share": 0.09876543209876543,
+    "image_id": "PFZ083 MOS634-PD ML1610213 20161010 PD-L1",
+    "polygon_counts": {
+      "Negative_Tumor": 4,
+      "NonTumor": 2,
+      "Positive_Tumor": 5
+    },
+    "selection_source_counts": {},
+    "tile_label_counts": {
+      "Ignore": 16,
+      "Negative_Context": 11,
+      "Positive_Context": 135
+    },
+    "tile_label_reason_counts": {
+      "dominant_negative": 11,
+      "dominant_positive": 135,
+      "mixed_or_ambiguous": 16
+    },
+    "usable_tile_count": 146,
+    "warnings": []
+  },
+  "warnings": [],
+  "working_space_note": "All masks/maps/overlay are exported in working image space (selected SVS level when applicable)."
+}

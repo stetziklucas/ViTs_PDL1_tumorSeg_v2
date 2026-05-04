@@ -1,0 +1,293 @@
+{
+  "aggregate_class_metrics": {
+    "Negative_Tumor": {
+      "annotated_px": 2164,
+      "fp_px": 1,
+      "specificity": 0.9995378927911276,
+      "tn_px": 2163
+    },
+    "NonTumor": {
+      "annotated_px": 5158,
+      "fp_px": 0,
+      "specificity": 1.0,
+      "tn_px": 5158
+    },
+    "Positive_Tumor": {
+      "annotated_px": 8634,
+      "fn_px": 2271,
+      "sensitivity": 0.7369701181375955,
+      "tp_px": 6363
+    }
+  },
+  "aggregate_metrics": {
+    "annotated_negative_px": 7322,
+    "annotated_positive_px": 8634,
+    "annotated_total_px": 15956,
+    "f1": 0.848513135084678,
+    "false_negative_px": 2271,
+    "false_positive_px": 1,
+    "precision": 0.9998428661219358,
+    "sensitivity": 0.7369701181375955,
+    "tn_px": 7321,
+    "tp_px": 6363,
+    "training_log_loss_mean": 0.0034128469044954804,
+    "training_log_loss_total": 54.45538520812988
+  },
+  "images_needing_attention": [
+    {
+      "image_id": "PFZ083 MOS634-PD ML1610213 20161010 PD-L1",
+      "run_tag": "training_20260430_000442__pfz083_mos634-pd_ml1610213_20161010_pd-l1",
+      "warnings": [
+        "very low usable negative tile support"
+      ]
+    },
+    {
+      "image_id": "PFZ083 MOS634-PD ML1610229 20161010 PD-L1",
+      "run_tag": "training_20260430_000442__pfz083_mos634-pd_ml1610229_20161010_pd-l1",
+      "warnings": [
+        "very low usable negative tile support"
+      ]
+    }
+  ],
+  "included_runs": [
+    {
+      "artifacts": {
+        "metrics_json": "outputs/reports_training_20260430_000442__pfz083_mos634-pd_ml1610213_20161010_pd-l1/metrics.json",
+        "overlay": "outputs/overlays_training_20260430_000442__pfz083_mos634-pd_ml1610213_20161010_pd-l1/overlay.png",
+        "pixel_prob_map": "outputs/maps_training_20260430_000442__pfz083_mos634-pd_ml1610213_20161010_pd-l1_fused/pixel_prob_map.png",
+        "positive_mask": "outputs/masks_training_20260430_000442__pfz083_mos634-pd_ml1610213_20161010_pd-l1/positive_mask.png",
+        "report_summary_json": "outputs/reports_training_20260430_000442__pfz083_mos634-pd_ml1610213_20161010_pd-l1/report_summary.json",
+        "tile_prob_map": "outputs/maps_training_20260430_000442__pfz083_mos634-pd_ml1610213_20161010_pd-l1/tile_prob_map.png"
+      },
+      "class_metrics": {
+        "Negative_Tumor": {
+          "annotated_px": 1349,
+          "fp_px": 0,
+          "specificity": 1.0,
+          "tn_px": 1349
+        },
+        "NonTumor": {
+          "annotated_px": 3417,
+          "fp_px": 0,
+          "specificity": 1.0,
+          "tn_px": 3417
+        },
+        "Positive_Tumor": {
+          "annotated_px": 6060,
+          "fn_px": 1891,
+          "sensitivity": 0.6879537953795379,
+          "tp_px": 4169
+        }
+      },
+      "development_metrics": {
+        "annotated_negative_px": 4766,
+        "annotated_positive_px": 6060,
+        "annotated_total_px": 10826,
+        "class_metrics": {
+          "Negative_Tumor": {
+            "annotated_px": 1349,
+            "fp_px": 0,
+            "specificity": 1.0,
+            "tn_px": 1349
+          },
+          "NonTumor": {
+            "annotated_px": 3417,
+            "fp_px": 0,
+            "specificity": 1.0,
+            "tn_px": 3417
+          },
+          "Positive_Tumor": {
+            "annotated_px": 6060,
+            "fn_px": 1891,
+            "sensitivity": 0.6879537953795379,
+            "tp_px": 4169
+          }
+        },
+        "f1": 0.8151334441294359,
+        "false_negative_px": 1891,
+        "false_positive_px": 0,
+        "image_id": "PFZ083 MOS634-PD ML1610213 20161010 PD-L1",
+        "precision": 1.0,
+        "scribble_transform": "nearest_uniform_scale",
+        "sensitivity": 0.6879537953795379,
+        "tn_px": 4766,
+        "tp_px": 4169,
+        "training_log_loss_mean": 0.0032661870691795213,
+        "training_log_loss_total": 35.3597412109375,
+        "working_shape_hw": [
+          2484,
+          3237
+        ]
+      },
+      "image_id": "PFZ083 MOS634-PD ML1610213 20161010 PD-L1",
+      "included_training_aliases": [
+        "pfz083_mos634-pd_ml1610213_20161010_pd-l1",
+        "pfz083_mos634-pd_ml1610229_20161010_pd-l1"
+      ],
+      "model_scope": "shared_project_model",
+      "run_tag": "training_20260430_000442__pfz083_mos634-pd_ml1610213_20161010_pd-l1",
+      "shared_model_tag": "training_20260430_000442",
+      "supervision_audit": {
+        "accepted_tile_count": 6,
+        "annotated_pixel_counts": {
+          "Ignore": 37624,
+          "Negative_Tumor": 86907,
+          "NonTumor": 218676,
+          "Positive_Tumor": 388814,
+          "Unlabeled": 513925083
+        },
+        "ignored_tile_count": 0,
+        "ignored_tile_reasons": {},
+        "ignored_tile_share": 0.0,
+        "image_id": "PFZ083 MOS634-PD ML1610213 20161010 PD-L1",
+        "polygon_counts": {
+          "Ignore": 4,
+          "Negative_Tumor": 6,
+          "NonTumor": 5,
+          "Positive_Tumor": 6
+        },
+        "selection_source_counts": {},
+        "tile_label_counts": {
+          "Positive_Context": 6
+        },
+        "tile_label_reason_counts": {
+          "sparse_positive_seed": 6
+        },
+        "usable_tile_count": 6,
+        "warnings": [
+          "very low usable negative tile support"
+        ]
+      },
+      "training_image_count": 2,
+      "warnings": [
+        "very low usable negative tile support"
+      ],
+      "working_space_note": "All masks/maps/overlay are exported in working image space (selected SVS level when applicable)."
+    },
+    {
+      "artifacts": {
+        "metrics_json": "outputs/reports_training_20260430_000442__pfz083_mos634-pd_ml1610229_20161010_pd-l1/metrics.json",
+        "overlay": "outputs/overlays_training_20260430_000442__pfz083_mos634-pd_ml1610229_20161010_pd-l1/overlay.png",
+        "pixel_prob_map": "outputs/maps_training_20260430_000442__pfz083_mos634-pd_ml1610229_20161010_pd-l1_fused/pixel_prob_map.png",
+        "positive_mask": "outputs/masks_training_20260430_000442__pfz083_mos634-pd_ml1610229_20161010_pd-l1/positive_mask.png",
+        "report_summary_json": "outputs/reports_training_20260430_000442__pfz083_mos634-pd_ml1610229_20161010_pd-l1/report_summary.json",
+        "tile_prob_map": "outputs/maps_training_20260430_000442__pfz083_mos634-pd_ml1610229_20161010_pd-l1/tile_prob_map.png"
+      },
+      "class_metrics": {
+        "Negative_Tumor": {
+          "annotated_px": 815,
+          "fp_px": 1,
+          "specificity": 0.9987730061349693,
+          "tn_px": 814
+        },
+        "NonTumor": {
+          "annotated_px": 1741,
+          "fp_px": 0,
+          "specificity": 1.0,
+          "tn_px": 1741
+        },
+        "Positive_Tumor": {
+          "annotated_px": 2574,
+          "fn_px": 380,
+          "sensitivity": 0.8523698523698524,
+          "tp_px": 2194
+        }
+      },
+      "development_metrics": {
+        "annotated_negative_px": 2556,
+        "annotated_positive_px": 2574,
+        "annotated_total_px": 5130,
+        "class_metrics": {
+          "Negative_Tumor": {
+            "annotated_px": 815,
+            "fp_px": 1,
+            "specificity": 0.9987730061349693,
+            "tn_px": 814
+          },
+          "NonTumor": {
+            "annotated_px": 1741,
+            "fp_px": 0,
+            "specificity": 1.0,
+            "tn_px": 1741
+          },
+          "Positive_Tumor": {
+            "annotated_px": 2574,
+            "fn_px": 380,
+            "sensitivity": 0.8523698523698524,
+            "tp_px": 2194
+          }
+        },
+        "f1": 0.9201090375340742,
+        "false_negative_px": 380,
+        "false_positive_px": 1,
+        "image_id": "PFZ083 MOS634-PD ML1610229 20161010 PD-L1",
+        "precision": 0.9995444191343964,
+        "scribble_transform": "nearest_uniform_scale",
+        "sensitivity": 0.8523698523698524,
+        "tn_px": 2555,
+        "tp_px": 2194,
+        "training_log_loss_mean": 0.0037223477577373065,
+        "training_log_loss_total": 19.095643997192383,
+        "working_shape_hw": [
+          2962,
+          3735
+        ]
+      },
+      "image_id": "PFZ083 MOS634-PD ML1610229 20161010 PD-L1",
+      "included_training_aliases": [
+        "pfz083_mos634-pd_ml1610213_20161010_pd-l1",
+        "pfz083_mos634-pd_ml1610229_20161010_pd-l1"
+      ],
+      "model_scope": "shared_project_model",
+      "run_tag": "training_20260430_000442__pfz083_mos634-pd_ml1610229_20161010_pd-l1",
+      "shared_model_tag": "training_20260430_000442",
+      "supervision_audit": {
+        "accepted_tile_count": 11,
+        "annotated_pixel_counts": {
+          "Ignore": 286073,
+          "Negative_Tumor": 52264,
+          "NonTumor": 111043,
+          "Positive_Tumor": 165251,
+          "Unlabeled": 707631009
+        },
+        "ignored_tile_count": 4,
+        "ignored_tile_reasons": {
+          "mixed_or_ambiguous": 4
+        },
+        "ignored_tile_share": 0.36363636363636365,
+        "image_id": "PFZ083 MOS634-PD ML1610229 20161010 PD-L1",
+        "polygon_counts": {
+          "Ignore": 3,
+          "Negative_Tumor": 3,
+          "NonTumor": 3,
+          "Positive_Tumor": 3
+        },
+        "selection_source_counts": {},
+        "tile_label_counts": {
+          "Ignore": 4,
+          "Negative_Context": 1,
+          "Positive_Context": 6
+        },
+        "tile_label_reason_counts": {
+          "mixed_or_ambiguous": 4,
+          "sparse_negative_seed": 1,
+          "sparse_positive_seed": 6
+        },
+        "usable_tile_count": 7,
+        "warnings": [
+          "very low usable negative tile support"
+        ]
+      },
+      "training_image_count": 2,
+      "warnings": [
+        "very low usable negative tile support"
+      ],
+      "working_space_note": "All masks/maps/overlay are exported in working image space (selected SVS level when applicable)."
+    }
+  ],
+  "run_tags_requested": [
+    "training_20260430_000442__pfz083_mos634-pd_ml1610213_20161010_pd-l1",
+    "training_20260430_000442__pfz083_mos634-pd_ml1610229_20161010_pd-l1"
+  ],
+  "skipped_runs": []
+}

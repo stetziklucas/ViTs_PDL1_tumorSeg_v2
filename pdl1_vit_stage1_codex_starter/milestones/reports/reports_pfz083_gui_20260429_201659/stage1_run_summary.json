@@ -1,0 +1,93 @@
+{
+  "elapsed_seconds": 81.75494849300003,
+  "ended_at_utc": "2026-04-29T20:19:28+00:00",
+  "final_status": "SUCCESS",
+  "image_id": "PFZ083 MOS634-PD ML1610229 20161010 PD-L1",
+  "key_artifacts": {
+    "metrics_json": "outputs/reports_pfz083_gui_20260429_201659/metrics.json",
+    "overlay_png": "outputs/overlays_pfz083_gui_20260429_201659/overlay.png",
+    "pixel_prob_map_png": "outputs/maps_pfz083_gui_20260429_201659_fused/pixel_prob_map.png",
+    "positive_mask_png": "outputs/masks_pfz083_gui_20260429_201659/positive_mask.png",
+    "report_pdf": "outputs/reports_pfz083_gui_20260429_201659/one_page_report.pdf",
+    "report_summary_json": "outputs/reports_pfz083_gui_20260429_201659/report_summary.json",
+    "report_summary_md": "outputs/reports_pfz083_gui_20260429_201659/report_summary.md",
+    "runner_log": "outputs/reports_pfz083_gui_20260429_201659/stage1_runner.log",
+    "tile_prob_map_png": "outputs/maps_pfz083_gui_20260429_201659/tile_prob_map.png",
+    "tile_probabilities_csv": "outputs/maps_pfz083_gui_20260429_201659/tile_probabilities.csv"
+  },
+  "next_review_files": [
+    "outputs/reports_pfz083_gui_20260429_201659/report_summary.md",
+    "outputs/reports_pfz083_gui_20260429_201659/report_summary.json",
+    "outputs/reports_pfz083_gui_20260429_201659/one_page_report.pdf",
+    "outputs/reports_pfz083_gui_20260429_201659/stage1_runner.log"
+  ],
+  "readiness": {
+    "next_action": "You can continue to downstream Stage 1 CLI steps.",
+    "notes": [
+      "This is an annotation-readiness check only; it is not a model-quality or validation check.",
+      "Sparse annotations are accepted with current config (allow_sparse_roi_seed_tiles=true)."
+    ],
+    "pixel_counts": {
+      "Ignore": 286073,
+      "Negative_Tumor": 52264,
+      "NonTumor": 111043,
+      "Positive_Tumor": 165251
+    },
+    "polygon_counts": {
+      "Ignore": 3,
+      "Negative_Tumor": 3,
+      "NonTumor": 3,
+      "Positive_Tumor": 3
+    },
+    "roi_positive_pixels": 217539,
+    "status_code": "READY",
+    "status_label": "Ready",
+    "summary_message": "Annotations are sufficient to continue with Stage 1 training/inference steps."
+  },
+  "run_tag": "pfz083_gui_20260429_201659",
+  "started_at_utc": "2026-04-29T20:18:06+00:00",
+  "steps": [
+    {
+      "command": "/home/stetzik_lucas/ViTs_PDL1_tumorSeg/pdl1_vit_stage1_codex_starter/.venv/bin/python scripts/extract_tiles.py --config config/base.yaml --image-id 'PFZ083 MOS634-PD ML1610229 20161010 PD-L1' --input data/raw --annotations-dir data/annotations --output-dir outputs/tiles_pfz083_gui_20260429_201659",
+      "elapsed_seconds": 8.138603471999886,
+      "exit_code": 0,
+      "step": "extract_tiles"
+    },
+    {
+      "command": "/home/stetzik_lucas/ViTs_PDL1_tumorSeg/pdl1_vit_stage1_codex_starter/.venv/bin/python scripts/embed_vit.py --config config/base.yaml --image-id 'PFZ083 MOS634-PD ML1610229 20161010 PD-L1' --input outputs/tiles_pfz083_gui_20260429_201659 --raw-dir data/raw --output-dir outputs/embeddings_pfz083_gui_20260429_201659",
+      "elapsed_seconds": 17.468393993999825,
+      "exit_code": 0,
+      "step": "embed_vit"
+    },
+    {
+      "command": "/home/stetzik_lucas/ViTs_PDL1_tumorSeg/pdl1_vit_stage1_codex_starter/.venv/bin/python scripts/make_tile_labels.py --config config/base.yaml --image-id 'PFZ083 MOS634-PD ML1610229 20161010 PD-L1' --annotations-dir data/annotations --tiles-dir outputs/tiles_pfz083_gui_20260429_201659 --embeddings-dir outputs/embeddings_pfz083_gui_20260429_201659 --output-dir outputs/tiles_pfz083_gui_20260429_201659",
+      "elapsed_seconds": 5.296877433999953,
+      "exit_code": 0,
+      "step": "make_tile_labels"
+    },
+    {
+      "command": "/home/stetzik_lucas/ViTs_PDL1_tumorSeg/pdl1_vit_stage1_codex_starter/.venv/bin/python scripts/train_tile_head.py --config config/base.yaml --labels outputs/tiles_pfz083_gui_20260429_201659/tile_labels.csv --embeddings-dir outputs/embeddings_pfz083_gui_20260429_201659 --output-dir models/tile_head_pfz083_gui_20260429_201659 --maps-dir outputs/maps_pfz083_gui_20260429_201659 --probs-manifest outputs/maps_pfz083_gui_20260429_201659/tile_probabilities.csv --smoke-image-id 'PFZ083 MOS634-PD ML1610229 20161010 PD-L1'",
+      "elapsed_seconds": 3.78201091599999,
+      "exit_code": 0,
+      "step": "train_tile_head"
+    },
+    {
+      "command": "/home/stetzik_lucas/ViTs_PDL1_tumorSeg/pdl1_vit_stage1_codex_starter/.venv/bin/python scripts/train_pixel_classifier.py --config config/base.yaml --image-id 'PFZ083 MOS634-PD ML1610229 20161010 PD-L1' --raw-dir data/raw --annotations-dir data/annotations --tiles-dir outputs/tiles_pfz083_gui_20260429_201659 --tile-probabilities outputs/maps_pfz083_gui_20260429_201659/tile_probabilities.csv --output-dir models/pixel_classifier_pfz083_gui_20260429_201659",
+      "elapsed_seconds": 7.379925892000074,
+      "exit_code": 0,
+      "step": "train_pixel_classifier"
+    },
+    {
+      "command": "/home/stetzik_lucas/ViTs_PDL1_tumorSeg/pdl1_vit_stage1_codex_starter/.venv/bin/python scripts/run_inference.py --config config/base.yaml --image-id 'PFZ083 MOS634-PD ML1610229 20161010 PD-L1' --raw-dir data/raw --annotations-dir data/annotations --tiles-dir outputs/tiles_pfz083_gui_20260429_201659 --tile-probabilities outputs/maps_pfz083_gui_20260429_201659/tile_probabilities.csv --pixel-model models/pixel_classifier_pfz083_gui_20260429_201659/pixel_model.pkl --pixel-feature-spec models/pixel_classifier_pfz083_gui_20260429_201659/pixel_feature_spec.json --maps-dir outputs/maps_pfz083_gui_20260429_201659_fused --masks-dir outputs/masks_pfz083_gui_20260429_201659 --overlays-dir outputs/overlays_pfz083_gui_20260429_201659 --reports-dir outputs/reports_pfz083_gui_20260429_201659",
+      "elapsed_seconds": 24.084505211000078,
+      "exit_code": 0,
+      "step": "run_inference"
+    },
+    {
+      "command": "/home/stetzik_lucas/ViTs_PDL1_tumorSeg/pdl1_vit_stage1_codex_starter/.venv/bin/python scripts/make_report.py --config config/base.yaml --image-id 'PFZ083 MOS634-PD ML1610229 20161010 PD-L1' --annotations-dir data/annotations --tile-maps-dir outputs/maps_pfz083_gui_20260429_201659 --pixel-maps-dir outputs/maps_pfz083_gui_20260429_201659_fused --masks-dir outputs/masks_pfz083_gui_20260429_201659 --overlays-dir outputs/overlays_pfz083_gui_20260429_201659 --reports-dir outputs/reports_pfz083_gui_20260429_201659 --tile-model-dir models/tile_head_pfz083_gui_20260429_201659",
+      "elapsed_seconds": 10.070389128999977,
+      "exit_code": 0,
+      "step": "make_report"
+    }
+  ]
+}

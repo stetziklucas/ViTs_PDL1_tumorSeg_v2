@@ -1,0 +1,163 @@
+{
+  "elapsed_seconds": 195.87198576800074,
+  "ended_at_utc": "2026-04-30T00:07:59+00:00",
+  "final_status": "SUCCESS",
+  "included_cases": [
+    {
+      "alias": "pfz083_mos634-pd_ml1610213_20161010_pd-l1",
+      "image_id": "PFZ083 MOS634-PD ML1610213 20161010 PD-L1",
+      "paths": {
+        "embeddings_dir": "outputs/embeddings_training_20260430_000442__pfz083_mos634-pd_ml1610213_20161010_pd-l1",
+        "fused_maps_dir": "outputs/maps_training_20260430_000442__pfz083_mos634-pd_ml1610213_20161010_pd-l1_fused",
+        "masks_dir": "outputs/masks_training_20260430_000442__pfz083_mos634-pd_ml1610213_20161010_pd-l1",
+        "overlays_dir": "outputs/overlays_training_20260430_000442__pfz083_mos634-pd_ml1610213_20161010_pd-l1",
+        "pixel_model_dir": "models/pixel_classifier_training_20260430_000442__pfz083_mos634-pd_ml1610213_20161010_pd-l1",
+        "reports_dir": "outputs/reports_training_20260430_000442__pfz083_mos634-pd_ml1610213_20161010_pd-l1",
+        "tile_maps_dir": "outputs/maps_training_20260430_000442__pfz083_mos634-pd_ml1610213_20161010_pd-l1",
+        "tile_model_dir": "models/tile_head_training_20260430_000442__pfz083_mos634-pd_ml1610213_20161010_pd-l1",
+        "tiles_dir": "outputs/tiles_training_20260430_000442__pfz083_mos634-pd_ml1610213_20161010_pd-l1"
+      },
+      "run_tag": "training_20260430_000442__pfz083_mos634-pd_ml1610213_20161010_pd-l1"
+    },
+    {
+      "alias": "pfz083_mos634-pd_ml1610229_20161010_pd-l1",
+      "image_id": "PFZ083 MOS634-PD ML1610229 20161010 PD-L1",
+      "paths": {
+        "embeddings_dir": "outputs/embeddings_training_20260430_000442__pfz083_mos634-pd_ml1610229_20161010_pd-l1",
+        "fused_maps_dir": "outputs/maps_training_20260430_000442__pfz083_mos634-pd_ml1610229_20161010_pd-l1_fused",
+        "masks_dir": "outputs/masks_training_20260430_000442__pfz083_mos634-pd_ml1610229_20161010_pd-l1",
+        "overlays_dir": "outputs/overlays_training_20260430_000442__pfz083_mos634-pd_ml1610229_20161010_pd-l1",
+        "pixel_model_dir": "models/pixel_classifier_training_20260430_000442__pfz083_mos634-pd_ml1610229_20161010_pd-l1",
+        "reports_dir": "outputs/reports_training_20260430_000442__pfz083_mos634-pd_ml1610229_20161010_pd-l1",
+        "tile_maps_dir": "outputs/maps_training_20260430_000442__pfz083_mos634-pd_ml1610229_20161010_pd-l1",
+        "tile_model_dir": "models/tile_head_training_20260430_000442__pfz083_mos634-pd_ml1610229_20161010_pd-l1",
+        "tiles_dir": "outputs/tiles_training_20260430_000442__pfz083_mos634-pd_ml1610229_20161010_pd-l1"
+      },
+      "run_tag": "training_20260430_000442__pfz083_mos634-pd_ml1610229_20161010_pd-l1"
+    }
+  ],
+  "next_review_files": [
+    "outputs/reports_training_training_20260430_000442/training_summary.md",
+    "outputs/reports_training_training_20260430_000442/training_summary.json",
+    "outputs/reports_training_training_20260430_000442/stage1_project_run_summary.md",
+    "outputs/reports_training_training_20260430_000442/stage1_project_run_summary.json",
+    "outputs/reports_training_training_20260430_000442/stage1_project_runner.log"
+  ],
+  "project_tag": "training_20260430_000442",
+  "readiness": [
+    {
+      "alias": "pfz083_mos634-pd_ml1610213_20161010_pd-l1",
+      "image_id": "PFZ083 MOS634-PD ML1610213 20161010 PD-L1",
+      "next_action": "You can continue to downstream Stage 1 CLI steps.",
+      "status_code": "READY",
+      "status_label": "Ready",
+      "summary_message": "Annotations are sufficient to continue with Stage 1 training/inference steps."
+    },
+    {
+      "alias": "pfz083_mos634-pd_ml1610229_20161010_pd-l1",
+      "image_id": "PFZ083 MOS634-PD ML1610229 20161010 PD-L1",
+      "next_action": "You can continue to downstream Stage 1 CLI steps.",
+      "status_code": "READY",
+      "status_label": "Ready",
+      "summary_message": "Annotations are sufficient to continue with Stage 1 training/inference steps."
+    }
+  ],
+  "requested_cases": [
+    {
+      "alias": "pfz083_mos634-pd_ml1610213_20161010_pd-l1",
+      "image_id": "PFZ083 MOS634-PD ML1610213 20161010 PD-L1"
+    },
+    {
+      "alias": "pfz083_mos634-pd_ml1610229_20161010_pd-l1",
+      "image_id": "PFZ083 MOS634-PD ML1610229 20161010 PD-L1"
+    }
+  ],
+  "shared_model_artifacts": {
+    "pixel_feature_spec": "models/pixel_classifier_training_20260430_000442_shared/pixel_feature_spec.json",
+    "pixel_model": "models/pixel_classifier_training_20260430_000442_shared/pixel_model.pkl",
+    "tile_metrics": "models/tile_head_training_20260430_000442_shared/tile_cv_metrics.json",
+    "tile_model": "models/tile_head_training_20260430_000442_shared/tile_head.pkl"
+  },
+  "skipped_cases": [],
+  "started_at_utc": "2026-04-30T00:04:43+00:00",
+  "steps": [
+    {
+      "command": "/home/stetzik_lucas/ViTs_PDL1_tumorSeg/pdl1_vit_stage1_codex_starter/.venv/bin/python scripts/extract_tiles.py --config config/base.yaml --image-id 'PFZ083 MOS634-PD ML1610213 20161010 PD-L1' --input data/raw --annotations-dir data/annotations --output-dir outputs/tiles_training_20260430_000442__pfz083_mos634-pd_ml1610213_20161010_pd-l1",
+      "elapsed_seconds": 6.675723737998851,
+      "exit_code": 0,
+      "step": "pfz083_mos634-pd_ml1610213_20161010_pd-l1:extract_tiles"
+    },
+    {
+      "command": "/home/stetzik_lucas/ViTs_PDL1_tumorSeg/pdl1_vit_stage1_codex_starter/.venv/bin/python scripts/embed_vit.py --config config/base.yaml --image-id 'PFZ083 MOS634-PD ML1610213 20161010 PD-L1' --input outputs/tiles_training_20260430_000442__pfz083_mos634-pd_ml1610213_20161010_pd-l1 --raw-dir data/raw --output-dir outputs/embeddings_training_20260430_000442__pfz083_mos634-pd_ml1610213_20161010_pd-l1",
+      "elapsed_seconds": 11.94024922599965,
+      "exit_code": 0,
+      "step": "pfz083_mos634-pd_ml1610213_20161010_pd-l1:embed_vit"
+    },
+    {
+      "command": "/home/stetzik_lucas/ViTs_PDL1_tumorSeg/pdl1_vit_stage1_codex_starter/.venv/bin/python scripts/make_tile_labels.py --config config/base.yaml --image-id 'PFZ083 MOS634-PD ML1610213 20161010 PD-L1' --annotations-dir data/annotations --tiles-dir outputs/tiles_training_20260430_000442__pfz083_mos634-pd_ml1610213_20161010_pd-l1 --embeddings-dir outputs/embeddings_training_20260430_000442__pfz083_mos634-pd_ml1610213_20161010_pd-l1 --output-dir outputs/tiles_training_20260430_000442__pfz083_mos634-pd_ml1610213_20161010_pd-l1",
+      "elapsed_seconds": 4.377841843999704,
+      "exit_code": 0,
+      "step": "pfz083_mos634-pd_ml1610213_20161010_pd-l1:make_tile_labels"
+    },
+    {
+      "command": "/home/stetzik_lucas/ViTs_PDL1_tumorSeg/pdl1_vit_stage1_codex_starter/.venv/bin/python scripts/extract_tiles.py --config config/base.yaml --image-id 'PFZ083 MOS634-PD ML1610229 20161010 PD-L1' --input data/raw --annotations-dir data/annotations --output-dir outputs/tiles_training_20260430_000442__pfz083_mos634-pd_ml1610229_20161010_pd-l1",
+      "elapsed_seconds": 10.129287912999644,
+      "exit_code": 0,
+      "step": "pfz083_mos634-pd_ml1610229_20161010_pd-l1:extract_tiles"
+    },
+    {
+      "command": "/home/stetzik_lucas/ViTs_PDL1_tumorSeg/pdl1_vit_stage1_codex_starter/.venv/bin/python scripts/embed_vit.py --config config/base.yaml --image-id 'PFZ083 MOS634-PD ML1610229 20161010 PD-L1' --input outputs/tiles_training_20260430_000442__pfz083_mos634-pd_ml1610229_20161010_pd-l1 --raw-dir data/raw --output-dir outputs/embeddings_training_20260430_000442__pfz083_mos634-pd_ml1610229_20161010_pd-l1",
+      "elapsed_seconds": 18.040848496000763,
+      "exit_code": 0,
+      "step": "pfz083_mos634-pd_ml1610229_20161010_pd-l1:embed_vit"
+    },
+    {
+      "command": "/home/stetzik_lucas/ViTs_PDL1_tumorSeg/pdl1_vit_stage1_codex_starter/.venv/bin/python scripts/make_tile_labels.py --config config/base.yaml --image-id 'PFZ083 MOS634-PD ML1610229 20161010 PD-L1' --annotations-dir data/annotations --tiles-dir outputs/tiles_training_20260430_000442__pfz083_mos634-pd_ml1610229_20161010_pd-l1 --embeddings-dir outputs/embeddings_training_20260430_000442__pfz083_mos634-pd_ml1610229_20161010_pd-l1 --output-dir outputs/tiles_training_20260430_000442__pfz083_mos634-pd_ml1610229_20161010_pd-l1",
+      "elapsed_seconds": 6.677214683999409,
+      "exit_code": 0,
+      "step": "pfz083_mos634-pd_ml1610229_20161010_pd-l1:make_tile_labels"
+    },
+    {
+      "command": "/home/stetzik_lucas/ViTs_PDL1_tumorSeg/pdl1_vit_stage1_codex_starter/.venv/bin/python scripts/train_tile_head.py --config config/base.yaml --cohort-file outputs/reports_training_training_20260430_000442/tile_training_cases.csv --output-dir models/tile_head_training_20260430_000442_shared",
+      "elapsed_seconds": 5.406792410998605,
+      "exit_code": 0,
+      "step": "shared_train_tile_head"
+    },
+    {
+      "command": "/home/stetzik_lucas/ViTs_PDL1_tumorSeg/pdl1_vit_stage1_codex_starter/.venv/bin/python scripts/train_pixel_classifier.py --config config/base.yaml --cohort-file outputs/reports_training_training_20260430_000442/pixel_training_cases.csv --raw-dir data/raw --annotations-dir data/annotations --output-dir models/pixel_classifier_training_20260430_000442_shared",
+      "elapsed_seconds": 13.889157991001412,
+      "exit_code": 0,
+      "step": "shared_train_pixel_classifier"
+    },
+    {
+      "command": "/home/stetzik_lucas/ViTs_PDL1_tumorSeg/pdl1_vit_stage1_codex_starter/.venv/bin/python scripts/run_inference.py --config config/base.yaml --image-id 'PFZ083 MOS634-PD ML1610213 20161010 PD-L1' --raw-dir data/raw --annotations-dir data/annotations --tiles-dir outputs/tiles_training_20260430_000442__pfz083_mos634-pd_ml1610213_20161010_pd-l1 --tile-probabilities outputs/maps_training_20260430_000442__pfz083_mos634-pd_ml1610213_20161010_pd-l1/tile_probabilities.csv --pixel-model models/pixel_classifier_training_20260430_000442_shared/pixel_model.pkl --pixel-feature-spec models/pixel_classifier_training_20260430_000442_shared/pixel_feature_spec.json --maps-dir outputs/maps_training_20260430_000442__pfz083_mos634-pd_ml1610213_20161010_pd-l1_fused --masks-dir outputs/masks_training_20260430_000442__pfz083_mos634-pd_ml1610213_20161010_pd-l1 --overlays-dir outputs/overlays_training_20260430_000442__pfz083_mos634-pd_ml1610213_20161010_pd-l1 --reports-dir outputs/reports_training_20260430_000442__pfz083_mos634-pd_ml1610213_20161010_pd-l1",
+      "elapsed_seconds": 30.32182563599963,
+      "exit_code": 0,
+      "step": "pfz083_mos634-pd_ml1610213_20161010_pd-l1:run_inference"
+    },
+    {
+      "command": "/home/stetzik_lucas/ViTs_PDL1_tumorSeg/pdl1_vit_stage1_codex_starter/.venv/bin/python scripts/make_report.py --config config/base.yaml --image-id 'PFZ083 MOS634-PD ML1610213 20161010 PD-L1' --annotations-dir data/annotations --tile-maps-dir outputs/maps_training_20260430_000442__pfz083_mos634-pd_ml1610213_20161010_pd-l1 --pixel-maps-dir outputs/maps_training_20260430_000442__pfz083_mos634-pd_ml1610213_20161010_pd-l1_fused --masks-dir outputs/masks_training_20260430_000442__pfz083_mos634-pd_ml1610213_20161010_pd-l1 --overlays-dir outputs/overlays_training_20260430_000442__pfz083_mos634-pd_ml1610213_20161010_pd-l1 --reports-dir outputs/reports_training_20260430_000442__pfz083_mos634-pd_ml1610213_20161010_pd-l1 --tile-model-dir models/tile_head_training_20260430_000442_shared --model-scope shared_project_model --shared-model-tag training_20260430_000442 --training-image-count 2 --included-training-aliases pfz083_mos634-pd_ml1610213_20161010_pd-l1,pfz083_mos634-pd_ml1610229_20161010_pd-l1",
+      "elapsed_seconds": 10.188976367000578,
+      "exit_code": 0,
+      "step": "pfz083_mos634-pd_ml1610213_20161010_pd-l1:make_report"
+    },
+    {
+      "command": "/home/stetzik_lucas/ViTs_PDL1_tumorSeg/pdl1_vit_stage1_codex_starter/.venv/bin/python scripts/run_inference.py --config config/base.yaml --image-id 'PFZ083 MOS634-PD ML1610229 20161010 PD-L1' --raw-dir data/raw --annotations-dir data/annotations --tiles-dir outputs/tiles_training_20260430_000442__pfz083_mos634-pd_ml1610229_20161010_pd-l1 --tile-probabilities outputs/maps_training_20260430_000442__pfz083_mos634-pd_ml1610229_20161010_pd-l1/tile_probabilities.csv --pixel-model models/pixel_classifier_training_20260430_000442_shared/pixel_model.pkl --pixel-feature-spec models/pixel_classifier_training_20260430_000442_shared/pixel_feature_spec.json --maps-dir outputs/maps_training_20260430_000442__pfz083_mos634-pd_ml1610229_20161010_pd-l1_fused --masks-dir outputs/masks_training_20260430_000442__pfz083_mos634-pd_ml1610229_20161010_pd-l1 --overlays-dir outputs/overlays_training_20260430_000442__pfz083_mos634-pd_ml1610229_20161010_pd-l1 --reports-dir outputs/reports_training_20260430_000442__pfz083_mos634-pd_ml1610229_20161010_pd-l1",
+      "elapsed_seconds": 42.18492714200147,
+      "exit_code": 0,
+      "step": "pfz083_mos634-pd_ml1610229_20161010_pd-l1:run_inference"
+    },
+    {
+      "command": "/home/stetzik_lucas/ViTs_PDL1_tumorSeg/pdl1_vit_stage1_codex_starter/.venv/bin/python scripts/make_report.py --config config/base.yaml --image-id 'PFZ083 MOS634-PD ML1610229 20161010 PD-L1' --annotations-dir data/annotations --tile-maps-dir outputs/maps_training_20260430_000442__pfz083_mos634-pd_ml1610229_20161010_pd-l1 --pixel-maps-dir outputs/maps_training_20260430_000442__pfz083_mos634-pd_ml1610229_20161010_pd-l1_fused --masks-dir outputs/masks_training_20260430_000442__pfz083_mos634-pd_ml1610229_20161010_pd-l1 --overlays-dir outputs/overlays_training_20260430_000442__pfz083_mos634-pd_ml1610229_20161010_pd-l1 --reports-dir outputs/reports_training_20260430_000442__pfz083_mos634-pd_ml1610229_20161010_pd-l1 --tile-model-dir models/tile_head_training_20260430_000442_shared --model-scope shared_project_model --shared-model-tag training_20260430_000442 --training-image-count 2 --included-training-aliases pfz083_mos634-pd_ml1610213_20161010_pd-l1,pfz083_mos634-pd_ml1610229_20161010_pd-l1",
+      "elapsed_seconds": 13.284906802000478,
+      "exit_code": 0,
+      "step": "pfz083_mos634-pd_ml1610229_20161010_pd-l1:make_report"
+    },
+    {
+      "command": "/home/stetzik_lucas/ViTs_PDL1_tumorSeg/pdl1_vit_stage1_codex_starter/.venv/bin/python scripts/make_project_report.py --config config/base.yaml --annotations-dir data/annotations --output-dir outputs/reports_training_training_20260430_000442 --run-tag training_20260430_000442__pfz083_mos634-pd_ml1610213_20161010_pd-l1 --run-tag training_20260430_000442__pfz083_mos634-pd_ml1610229_20161010_pd-l1",
+      "elapsed_seconds": 0.7045870290003222,
+      "exit_code": 0,
+      "step": "make_project_report"
+    }
+  ]
+}

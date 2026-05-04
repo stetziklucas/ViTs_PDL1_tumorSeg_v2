@@ -1,0 +1,3 @@
+alias,image_id,labels_path,embeddings_dir,maps_dir,probs_manifest
+pf0213,PFZ083 MOS634-PD ML1610213 20161010 PD-L1,outputs/tiles_pfz083_shared_smoke__pf0213/tile_labels.csv,outputs/embeddings_pfz083_shared_smoke__pf0213,outputs/maps_pfz083_shared_smoke__pf0213,outputs/maps_pfz083_shared_smoke__pf0213/tile_probabilities.csv
+pf0229,PFZ083 MOS634-PD ML1610229 20161010 PD-L1,outputs/tiles_pfz083_shared_smoke__pf0229/tile_labels.csv,outputs/embeddings_pfz083_shared_smoke__pf0229,outputs/maps_pfz083_shared_smoke__pf0229,outputs/maps_pfz083_shared_smoke__pf0229/tile_probabilities.csv

@@ -1,0 +1,86 @@
+{
+  "alias_to_image_id": {
+    "pfz083_mos634-pd_ml1610213_20161010_pd-l1": "PFZ083 MOS634-PD ML1610213 20161010 PD-L1",
+    "pfz083_mos634-pd_ml1610229_20161010_pd-l1": "PFZ083 MOS634-PD ML1610229 20161010 PD-L1"
+  },
+  "counts": {
+    "included_ready_count": 2,
+    "readiness_counts": {
+      "READY": 2
+    },
+    "requested_count": 2,
+    "skipped_count": 0
+  },
+  "included_ready_cases": [
+    {
+      "alias": "pfz083_mos634-pd_ml1610213_20161010_pd-l1",
+      "child_run_tag": "training_20260430_000442__pfz083_mos634-pd_ml1610213_20161010_pd-l1",
+      "image_id": "PFZ083 MOS634-PD ML1610213 20161010 PD-L1",
+      "paths": {
+        "embeddings_dir": "outputs/embeddings_training_20260430_000442__pfz083_mos634-pd_ml1610213_20161010_pd-l1",
+        "fused_maps_dir": "outputs/maps_training_20260430_000442__pfz083_mos634-pd_ml1610213_20161010_pd-l1_fused",
+        "masks_dir": "outputs/masks_training_20260430_000442__pfz083_mos634-pd_ml1610213_20161010_pd-l1",
+        "overlays_dir": "outputs/overlays_training_20260430_000442__pfz083_mos634-pd_ml1610213_20161010_pd-l1",
+        "pixel_model_dir": "models/pixel_classifier_training_20260430_000442__pfz083_mos634-pd_ml1610213_20161010_pd-l1",
+        "reports_dir": "outputs/reports_training_20260430_000442__pfz083_mos634-pd_ml1610213_20161010_pd-l1",
+        "tile_maps_dir": "outputs/maps_training_20260430_000442__pfz083_mos634-pd_ml1610213_20161010_pd-l1",
+        "tile_model_dir": "models/tile_head_training_20260430_000442__pfz083_mos634-pd_ml1610213_20161010_pd-l1",
+        "tiles_dir": "outputs/tiles_training_20260430_000442__pfz083_mos634-pd_ml1610213_20161010_pd-l1"
+      },
+      "run_tag": "training_20260430_000442__pfz083_mos634-pd_ml1610213_20161010_pd-l1"
+    },
+    {
+      "alias": "pfz083_mos634-pd_ml1610229_20161010_pd-l1",
+      "child_run_tag": "training_20260430_000442__pfz083_mos634-pd_ml1610229_20161010_pd-l1",
+      "image_id": "PFZ083 MOS634-PD ML1610229 20161010 PD-L1",
+      "paths": {
+        "embeddings_dir": "outputs/embeddings_training_20260430_000442__pfz083_mos634-pd_ml1610229_20161010_pd-l1",
+        "fused_maps_dir": "outputs/maps_training_20260430_000442__pfz083_mos634-pd_ml1610229_20161010_pd-l1_fused",
+        "masks_dir": "outputs/masks_training_20260430_000442__pfz083_mos634-pd_ml1610229_20161010_pd-l1",
+        "overlays_dir": "outputs/overlays_training_20260430_000442__pfz083_mos634-pd_ml1610229_20161010_pd-l1",
+        "pixel_model_dir": "models/pixel_classifier_training_20260430_000442__pfz083_mos634-pd_ml1610229_20161010_pd-l1",
+        "reports_dir": "outputs/reports_training_20260430_000442__pfz083_mos634-pd_ml1610229_20161010_pd-l1",
+        "tile_maps_dir": "outputs/maps_training_20260430_000442__pfz083_mos634-pd_ml1610229_20161010_pd-l1",
+        "tile_model_dir": "models/tile_head_training_20260430_000442__pfz083_mos634-pd_ml1610229_20161010_pd-l1",
+        "tiles_dir": "outputs/tiles_training_20260430_000442__pfz083_mos634-pd_ml1610229_20161010_pd-l1"
+      },
+      "run_tag": "training_20260430_000442__pfz083_mos634-pd_ml1610229_20161010_pd-l1"
+    }
+  ],
+  "project_image_candidates": [
+    {
+      "alias": "pfz083_mos634-pd_ml1610213_20161010_pd-l1",
+      "image_id": "PFZ083 MOS634-PD ML1610213 20161010 PD-L1"
+    },
+    {
+      "alias": "pfz083_mos634-pd_ml1610229_20161010_pd-l1",
+      "image_id": "PFZ083 MOS634-PD ML1610229 20161010 PD-L1"
+    },
+    {
+      "alias": "sample_001",
+      "image_id": "sample_001"
+    }
+  ],
+  "project_tag": "training_20260430_000442",
+  "requested_cases": [
+    {
+      "alias": "pfz083_mos634-pd_ml1610213_20161010_pd-l1",
+      "image_id": "PFZ083 MOS634-PD ML1610213 20161010 PD-L1"
+    },
+    {
+      "alias": "pfz083_mos634-pd_ml1610229_20161010_pd-l1",
+      "image_id": "PFZ083 MOS634-PD ML1610229 20161010 PD-L1"
+    }
+  ],
+  "skipped_cases": [
+    {
+      "alias": "sample_001",
+      "image_id": "sample_001",
+      "raw_image_path": "data/raw/sample_001.png",
+      "readiness_status_code": "NO_USABLE_SUPERVISION",
+      "readiness_summary": "No usable tumor supervision was found in the saved artifacts.",
+      "reason": "NOT_READY",
+      "status": "SKIPPED"
+    }
+  ]
+}

@@ -1,0 +1,38 @@
+{
+  "artifacts": {
+    "metrics": "outputs/reports_training_20260430_000442__pfz083_mos634-pd_ml1610213_20161010_pd-l1/metrics.json",
+    "overlay": "outputs/overlays_training_20260430_000442__pfz083_mos634-pd_ml1610213_20161010_pd-l1/overlay.png",
+    "pixel_prob_map": "outputs/maps_training_20260430_000442__pfz083_mos634-pd_ml1610213_20161010_pd-l1_fused/pixel_prob_map.png",
+    "positive_mask": "outputs/masks_training_20260430_000442__pfz083_mos634-pd_ml1610213_20161010_pd-l1/positive_mask.png"
+  },
+  "image_id": "PFZ083 MOS634-PD ML1610213 20161010 PD-L1",
+  "image_loader_backend": "openslide",
+  "limitations_or_fallbacks": [],
+  "original_image_shape_hw": [
+    19874,
+    25896
+  ],
+  "output_space_note": "All masks/maps/overlay are exported in working image space (selected SVS level when applicable).",
+  "pixel_feature_spec_path": "models/pixel_classifier_training_20260430_000442_shared/pixel_feature_spec.json",
+  "pixel_model_path": "models/pixel_classifier_training_20260430_000442_shared/pixel_model.pkl",
+  "positive_area_px": 4169,
+  "positive_fraction_of_roi": 0.5626940207855311,
+  "roi_area_px": 7409,
+  "roi_mask_path": "data/annotations/roi_masks/PFZ083 MOS634-PD ML1610213 20161010 PD-L1_roi_mask.png",
+  "roi_mask_transform": "nearest_uniform_scale",
+  "source_image_path": "data/raw/PFZ083 MOS634-PD ML1610213 20161010 PD-L1.svs",
+  "svs_level": 2,
+  "svs_level_downsample": 8.000402576489533,
+  "thresholds": {
+    "pixel_prob_gt": 0.55,
+    "tile_prior_gt": 0.6
+  },
+  "tile_prior_source": "outputs/maps_training_20260430_000442__pfz083_mos634-pd_ml1610213_20161010_pd-l1/tile_probabilities.csv",
+  "tissue_mask_source": "outputs/tiles_training_20260430_000442__pfz083_mos634-pd_ml1610213_20161010_pd-l1/PFZ083 MOS634-PD ML1610213 20161010 PD-L1_tissue_mask.png",
+  "tissue_mask_transform": "identity",
+  "working_coordinate_space": "svs_level_pixels_xywh",
+  "working_image_shape_hw": [
+    2484,
+    3237
+  ]
+}

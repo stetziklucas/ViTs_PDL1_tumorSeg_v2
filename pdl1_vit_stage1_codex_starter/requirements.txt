@@ -1,0 +1,16 @@
+numpy
+pandas
+scikit-image
+scikit-learn
+opencv-python
+matplotlib
+Pillow
+torch
+timm
+pyyaml
+jupyter
+magicgui>=0.10,<1.0
+openslide-python
+# napari runtime is expected in the annotator environment (validated against napari 0.7.0)
+# Linux note: OpenSlide system libraries/tools are also required for .svs support
+# (for example on Debian/Ubuntu: libopenslide0 openslide-tools)

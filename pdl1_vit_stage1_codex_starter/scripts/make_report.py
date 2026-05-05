@@ -339,6 +339,8 @@ def write_report_summary_markdown(output_path: Path, payload: dict[str, Any]) ->
         f"- verification annotation labels available: {'yes' if payload.get('verification_annotation_labels_available') else 'no'}",
         "- verification review layers available: annotation labels + class-aware prediction labels",
         f"- verification mode: {payload.get('verification_overlay_mode') or 'unavailable'}",
+        f"- verification regions available: {'yes' if payload.get('verification_regions_available') else 'no'}",
+        f"- verification region count: {int(payload.get('verification_region_count') or 0)}",
         "- verification purpose: annotated-region development review (ROI-cropped), not whole-slide validation",
     ]
     output_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
@@ -500,6 +502,7 @@ def main() -> None:
             "scribble_labels": scribble_path.as_posix(),
         },
     }
+    annotation_meta_path = args.annotations_dir / f"{args.image_id}_annotation_meta.json"
     verification_meta = {"verification_overlay_available": False}
     try:
         verification_meta = generate_verification_overlay(
@@ -509,6 +512,8 @@ def main() -> None:
             positive_mask_path=required_inputs["positive_mask"],
             output_dir=args.overlays_dir,
             label_encoding={k: int(v) for k, v in label_encoding.items()},
+            annotation_metadata_path=annotation_meta_path if annotation_meta_path.exists() else None,
+            overlay_base_path=required_inputs["overlay"],
         )
     except Exception as exc:
         logging.warning("Verification overlay not generated: %s", exc)
@@ -528,6 +533,9 @@ def main() -> None:
                 "crop_x0",
                 "crop_h",
                 "crop_w",
+                "verification_regions_available",
+                "verification_regions_path",
+                "verification_region_count",
             )
         }
     )

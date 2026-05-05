@@ -84,6 +84,7 @@ def discover_current_image_shared_reports(image_id: str, outputs_root: Path=Path
             'project_tag':str(tag),
             'timestamp_utc':_best_ts(js,None,p),
             'report_summary_md':(p.parent/'report_summary.md').as_posix(),
+            'report_summary_json': p.as_posix(),
             'f1':dev.get('f1'),
             'verification_overlay_path':overlay_path,
             'verification_overlay_available':overlay_available,
@@ -97,6 +98,9 @@ def discover_current_image_shared_reports(image_id: str, outputs_root: Path=Path
             'crop_x0': js.get("crop_x0"),
             'crop_h': js.get("crop_h"),
             'crop_w': js.get("crop_w"),
+            'verification_regions_available': bool(js.get('verification_regions_available')) ,
+            'verification_regions_path': js.get('verification_regions_path'),
+            'verification_region_count': int(js.get('verification_region_count') or 0),
         })
     return sorted(rows,key=lambda r:(_parse_ts(r.get('timestamp_utc')),str(r.get('project_tag'))), reverse=True)
 

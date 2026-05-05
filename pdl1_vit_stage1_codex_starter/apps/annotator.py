@@ -35,6 +35,13 @@ from project_report_history import (
     format_project_summary_label,
 )
 from display_format import format_display_float
+from apps.verification_results_viewer import (
+    load_verification_regions,
+    filter_verification_regions,
+    sort_verification_regions,
+    verification_region_label,
+    viewer_bbox_from_region,
+)
 
 
 DEFAULT_IMAGE_EXTENSIONS = (".png", ".jpg", ".jpeg", ".tif", ".tiff", ".bmp", ".svs")
@@ -758,7 +765,8 @@ def launch_napari_app(
     project_combo = QComboBox(); image_combo = QComboBox()
     run_btn = QPushButton("Train model and run verification")
     show_log_toggle = QCheckBox("Show runner log"); show_log_toggle.setChecked(True)
-    show_verification_toggle = QCheckBox("Show verification mask"); show_verification_toggle.setChecked(False)
+    show_verification_toggle = QCheckBox("Debug: show raw verification labels"); show_verification_toggle.setChecked(False)
+    open_verification_viewer_btn = QPushButton("Open verification results viewer")
     verification_status = QLabel("Verification review: positive=red, negative=gold, nontumor=green, ignore=gray")
     preview_box = QTextEdit(); preview_box.setReadOnly(True)
     project_log = QPlainTextEdit(); project_log.setReadOnly(True)
@@ -771,7 +779,7 @@ def launch_napari_app(
     preview_box.setLineWrapMode(QTextEdit.WidgetWidth); preview_box.setMinimumWidth(0); preview_box.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
     project_log.setLineWrapMode(QPlainTextEdit.WidgetWidth); project_log.setMinimumWidth(0); project_log.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.MinimumExpanding)
     splitter = QSplitter(); splitter.setOrientation(2); splitter.addWidget(preview_box); splitter.addWidget(project_log); splitter.setStretchFactor(0,5); splitter.setStretchFactor(1,1); splitter.setChildrenCollapsible(True); splitter.setCollapsible(0, True); splitter.setCollapsible(1, True); splitter.setMinimumWidth(0); splitter.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-    for w in (run_btn, show_log_toggle, show_verification_toggle, QLabel('Project summaries'), project_combo, QLabel('Current image shared reports'), image_combo, workflow_status, latest_project_tag, selected_project_tag, selected_image_tag, project_counts, project_details, verification_status, preview_path_label, splitter): workflow_layout.addWidget(w)
+    for w in (run_btn, open_verification_viewer_btn, show_log_toggle, show_verification_toggle, QLabel('Project summaries'), project_combo, QLabel('Current image shared reports'), image_combo, workflow_status, latest_project_tag, selected_project_tag, selected_image_tag, project_counts, project_details, verification_status, preview_path_label, splitter): workflow_layout.addWidget(w)
     viewer.window.add_dock_widget(workflow_panel, area='right', name='Stage 1 Workflow')
 
     project_runner = QProcess(viewer.window.qt_viewer); project_runner.setProcessChannelMode(QProcess.MergedChannels)
@@ -884,6 +892,34 @@ def launch_napari_app(
                 _load_preview(None)
         _sync_verification_overlay()
 
+
+    def _open_verification_results_viewer()->None:
+        idx=image_combo.currentIndex()
+        if idx<0 or idx>=len(wf_state['image_entries']):
+            verification_status.setText('Verification results viewer: select a current-image shared report first.')
+            return
+        entry=wf_state['image_entries'][idx]
+        vp=entry.get('verification_regions_path')
+        if not isinstance(vp,str) or not vp or not Path(vp).exists():
+            verification_status.setText('Verification results viewer: verification_regions.json missing; regenerate report/project run.')
+            return
+        regions=sort_verification_regions(filter_verification_regions(load_verification_regions(Path(vp)), 'All', 'All'), 'review_priority')
+        if not regions:
+            verification_status.setText('Verification results viewer: no regions found.')
+            return
+        r=regions[0]
+        lab=verification_region_label(r)
+        bbox=viewer_bbox_from_region(r)
+        cy,cx=bbox['center_yx']
+        viewer.camera.center=(float(cy), float(cx))
+        rect=np.array([[bbox['y'],bbox['x']],[bbox['y'],bbox['x']+bbox['w']],[bbox['y']+bbox['h'],bbox['x']+bbox['w']],[bbox['y']+bbox['h'],bbox['x']]])
+        lname='verification_region_bbox'
+        if lname in viewer.layers:
+            viewer.layers[lname].data=[rect]
+        else:
+            viewer.add_shapes([rect], shape_type='polygon', name=lname, edge_color='cyan', face_color=[0,0,0,0], edge_width=2)
+        verification_status.setText(f"Verification results viewer: {entry.get('project_tag')} | {lab}")
+
     def _append_output()->None:
         text=bytes(project_runner.readAllStandardOutput()).decode('utf-8',errors='replace')
         if text: project_log.appendPlainText(text.rstrip('\n'))
@@ -916,7 +952,7 @@ def launch_napari_app(
     def _on_verification_toggle(_:bool)->None: _sync_verification_overlay()
 
     project_runner.readyReadStandardOutput.connect(_append_output); project_runner.started.connect(_started); project_runner.finished.connect(_finished)
-    run_btn.clicked.connect(_run_project); project_combo.currentIndexChanged.connect(_on_project_changed); image_combo.currentIndexChanged.connect(_on_image_changed); show_log_toggle.toggled.connect(_on_toggle); show_verification_toggle.toggled.connect(_on_verification_toggle)
+    run_btn.clicked.connect(_run_project); open_verification_viewer_btn.clicked.connect(_open_verification_results_viewer); project_combo.currentIndexChanged.connect(_on_project_changed); image_combo.currentIndexChanged.connect(_on_image_changed); show_log_toggle.toggled.connect(_on_toggle); show_verification_toggle.toggled.connect(_on_verification_toggle)
     _refresh_workflow()
     save_state = {"in_progress": False}
 

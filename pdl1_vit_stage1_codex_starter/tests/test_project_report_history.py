@@ -10,7 +10,7 @@ class ProjectReportHistoryTests(unittest.TestCase):
             (p/'training_summary.md').write_text('# t')
             (p/'stage1_project_cases.json').write_text(json.dumps({'included_ready_cases':[{'alias':'a','image_id':'IMG'}],'skipped_cases':[]}))
             c=o/'reports_training_1__a'; c.mkdir(parents=True)
-            (c/'report_summary.json').write_text(json.dumps({'image_id':'IMG','model_scope':'shared_project_model','shared_model_tag':'training_1','development_metrics':{'f1':0.9},'ended_at_utc':'2026-01-01T00:01:00+00:00','verification_overlay_mode':'positive_mask_working_crop','crop_y0':5,'crop_x0':7,'crop_h':20,'crop_w':21,'verification_annotation_labels_available':True,'verification_annotation_labels_path':'/tmp/ann.png','verification_prediction_labels_available':True,'verification_prediction_labels_path':'/tmp/pred.png'}))
+            (c/'report_summary.json').write_text(json.dumps({'image_id':'IMG','model_scope':'shared_project_model','shared_model_tag':'training_1','development_metrics':{'f1':0.9},'ended_at_utc':'2026-01-01T00:01:00+00:00','verification_overlay_mode':'positive_mask_working_crop','crop_y0':5,'crop_x0':7,'crop_h':20,'crop_w':21,'verification_annotation_labels_available':True,'verification_regions_available':True,'verification_regions_path':'/tmp/regions.json','verification_region_count':2,'verification_annotation_labels_path':'/tmp/ann.png','verification_prediction_labels_available':True,'verification_prediction_labels_path':'/tmp/pred.png'}))
             ov_dir=o/'overlays_training_1__a'; ov_dir.mkdir(parents=True)
             (ov_dir/'verification_overlay.png').write_bytes(b'PNG')
             (c/'report_summary.md').write_text('# c')
@@ -26,6 +26,9 @@ class ProjectReportHistoryTests(unittest.TestCase):
             self.assertEqual(ie[0]['verification_annotation_labels_path'], '/tmp/ann.png')
             self.assertTrue(ie[0]['verification_prediction_labels_available'])
             self.assertEqual(ie[0]['verification_prediction_labels_path'], '/tmp/pred.png')
+            self.assertEqual(ie[0]['verification_region_count'], 2)
+            self.assertEqual(ie[0]['verification_regions_path'], '/tmp/regions.json')
+            self.assertTrue(str(ie[0]['report_summary_json']).endswith('report_summary.json'))
             self.assertEqual(auto_select_latest_indices(pe, ie),(0,0))
 
 if __name__=='__main__': unittest.main()

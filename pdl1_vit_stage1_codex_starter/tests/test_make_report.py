@@ -82,6 +82,7 @@ class MakeReportTests(unittest.TestCase):
                 "verification_prediction_labels_path": "/tmp/verification_prediction_labels.png",
                 "verification_regions_available": True,
                 "verification_region_count": 4,
+                "verification_regions_warning": "none",
             }
 
             write_report_summary_markdown(path, payload)
@@ -117,6 +118,7 @@ class MakeReportTests(unittest.TestCase):
             self.assertIn("verification review layers available: annotation labels + class-aware prediction labels", text)
             self.assertIn("verification regions available: yes", text)
             self.assertIn("verification region count: 4", text)
+            self.assertIn("verification warning: none", text)
 
 
 if __name__ == "__main__":

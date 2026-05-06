@@ -341,6 +341,7 @@ def write_report_summary_markdown(output_path: Path, payload: dict[str, Any]) ->
         f"- verification mode: {payload.get('verification_overlay_mode') or 'unavailable'}",
         f"- verification regions available: {'yes' if payload.get('verification_regions_available') else 'no'}",
         f"- verification region count: {int(payload.get('verification_region_count') or 0)}",
+        *( [f"- verification warning: {payload.get('verification_regions_warning')}"] if payload.get('verification_regions_warning') else [] ),
         "- verification purpose: annotated-region development review (ROI-cropped), not whole-slide validation",
     ]
     output_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
@@ -536,6 +537,7 @@ def main() -> None:
                 "verification_regions_available",
                 "verification_regions_path",
                 "verification_region_count",
+                "verification_regions_warning",
             )
         }
     )

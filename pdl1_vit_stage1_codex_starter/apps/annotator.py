@@ -35,6 +35,16 @@ from project_report_history import (
     format_project_summary_label,
 )
 from display_format import format_display_float
+
+
+def qt_orientation(Qt: Any, name: str) -> Any:
+    orientation = getattr(Qt, "Orientation", None)
+    if orientation is not None and hasattr(orientation, name):
+        return getattr(orientation, name)
+    if hasattr(Qt, name):
+        return getattr(Qt, name)
+    raise AttributeError(f"Qt orientation {name} not available")
+
 from apps.verification_results_viewer import (
     load_verification_regions,
     filter_verification_regions,
@@ -778,7 +788,7 @@ def launch_napari_app(
         combo.setMinimumWidth(0); combo.setSizeAdjustPolicy(QComboBox.AdjustToMinimumContentsLengthWithIcon); combo.setMinimumContentsLength(16); combo.view().setTextElideMode(Qt.ElideRight); combo.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
     preview_box.setLineWrapMode(QTextEdit.WidgetWidth); preview_box.setMinimumWidth(0); preview_box.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
     project_log.setLineWrapMode(QPlainTextEdit.WidgetWidth); project_log.setMinimumWidth(0); project_log.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.MinimumExpanding)
-    splitter = QSplitter(); splitter.setOrientation(2); splitter.addWidget(preview_box); splitter.addWidget(project_log); splitter.setStretchFactor(0,5); splitter.setStretchFactor(1,1); splitter.setChildrenCollapsible(True); splitter.setCollapsible(0, True); splitter.setCollapsible(1, True); splitter.setMinimumWidth(0); splitter.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+    splitter = QSplitter(); splitter.setOrientation(qt_orientation(Qt, "Vertical")); splitter.addWidget(preview_box); splitter.addWidget(project_log); splitter.setStretchFactor(0,5); splitter.setStretchFactor(1,1); splitter.setChildrenCollapsible(True); splitter.setCollapsible(0, True); splitter.setCollapsible(1, True); splitter.setMinimumWidth(0); splitter.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
     for w in (run_btn, open_verification_viewer_btn, show_log_toggle, show_verification_toggle, QLabel('Project summaries'), project_combo, QLabel('Current image shared reports'), image_combo, workflow_status, latest_project_tag, selected_project_tag, selected_image_tag, project_counts, project_details, verification_status, preview_path_label, splitter): workflow_layout.addWidget(w)
     viewer.window.add_dock_widget(workflow_panel, area='right', name='Stage 1 Workflow')
 
@@ -905,7 +915,7 @@ def launch_napari_app(
             return
         regions=sort_verification_regions(filter_verification_regions(load_verification_regions(Path(vp)), 'All', 'All'), 'review_priority')
         if not regions:
-            verification_status.setText('Verification results viewer: no regions found.')
+            verification_status.setText('No verification review regions were generated for this report. Regenerate after annotation/report fix or inspect annotation artifacts.')
             return
         r=regions[0]
         lab=verification_region_label(r)

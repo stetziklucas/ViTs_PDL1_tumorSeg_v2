@@ -101,6 +101,7 @@ def discover_current_image_shared_reports(image_id: str, outputs_root: Path=Path
             'verification_regions_available': bool(js.get('verification_regions_available')) ,
             'verification_regions_path': js.get('verification_regions_path'),
             'verification_region_count': int(js.get('verification_region_count') or 0),
+            'verification_regions_warning': js.get('verification_regions_warning'),
         })
     return sorted(rows,key=lambda r:(_parse_ts(r.get('timestamp_utc')),str(r.get('project_tag'))), reverse=True)
 

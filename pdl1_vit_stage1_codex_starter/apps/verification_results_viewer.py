@@ -3,14 +3,29 @@ import json
 from pathlib import Path
 from typing import Any
 
+ZERO_REGION_MESSAGE = "No verification review regions were generated for this report. Regenerate after annotation/report fix or inspect annotation artifacts."
+
 def load_verification_regions(path: Path) -> list[dict]:
     if not path.exists():
         return []
     payload = json.loads(path.read_text(encoding='utf-8'))
+    if isinstance(payload, list):
+        return payload
     if isinstance(payload, dict):
-        regions = payload.get('regions', [])
-        return regions if isinstance(regions, list) else []
+        for key in ('regions', 'verification_regions', 'items'):
+            regions = payload.get(key)
+            if isinstance(regions, list):
+                return regions
     return []
+
+def verification_regions_message(path: Path | None, regions: list[dict] | None = None) -> str | None:
+    if path is None or not path.exists():
+        return 'Verification results viewer: verification_regions.json missing; regenerate report/project run.'
+    if regions is None:
+        regions = load_verification_regions(path)
+    if not regions:
+        return ZERO_REGION_MESSAGE
+    return None
 
 def filter_verification_regions(regions, class_filter='All', issue_filter='All'):
     out=[]

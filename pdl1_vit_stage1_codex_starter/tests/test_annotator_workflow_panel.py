@@ -4,8 +4,8 @@ from pathlib import Path
 from datetime import datetime, timezone
 import tempfile
 import numpy as np
-from apps.annotator import default_project_tag, build_stage1_project_command, compact_path_label, resolve_verification_overlay_path, resolve_verification_annotation_labels_path, resolve_verification_prediction_labels_path, verification_overlay_translate, verification_mask_layer_kwargs, build_polygon_review_face_colors
-from apps.verification_results_viewer import load_verification_regions, filter_verification_regions, sort_verification_regions, verification_region_label, viewer_bbox_from_region
+from apps.annotator import default_project_tag, build_stage1_project_command, compact_path_label, resolve_verification_overlay_path, resolve_verification_annotation_labels_path, resolve_verification_prediction_labels_path, verification_overlay_translate, verification_mask_layer_kwargs, build_polygon_review_face_colors, qt_orientation
+from apps.verification_results_viewer import load_verification_regions, filter_verification_regions, sort_verification_regions, verification_region_label, viewer_bbox_from_region, verification_regions_message
 
 class AnnotatorWorkflowPanelTests(unittest.TestCase):
     def test_auto_generated_project_tag(self):
@@ -26,3 +26,17 @@ class AnnotatorWorkflowPanelTests(unittest.TestCase):
 
 if __name__=='__main__':
     unittest.main()
+
+
+class QtCompatTests(unittest.TestCase):
+    def test_qt_orientation_compat(self):
+        class Q1: Horizontal=object(); Vertical=object()
+        class Qt1: Orientation=Q1
+        class Qt2: Horizontal=object(); Vertical=object()
+        self.assertIs(qt_orientation(Qt1, 'Horizontal'), Qt1.Orientation.Horizontal)
+        self.assertIs(qt_orientation(Qt2, 'Vertical'), Qt2.Vertical)
+
+    def test_zero_region_message(self):
+        with tempfile.TemporaryDirectory() as d:
+            p=Path(d)/'verification_regions.json'; p.write_text(json.dumps({'region_count':0,'regions':[]}))
+            self.assertIn('No verification review regions were generated', verification_regions_message(p))

@@ -51,6 +51,10 @@ from apps.verification_results_viewer import (
     sort_verification_regions,
     verification_region_label,
     viewer_bbox_from_region,
+    resolve_verification_regions_path,
+    rectangle_vertices_from_bbox_yxhw,
+    compute_working_to_display_transform,
+    verification_regions_message,
 )
 
 
@@ -755,7 +759,7 @@ def launch_napari_app(
     viewer.window.add_dock_widget(status_panel, area='left', name='Annotation Save Status')
 
     from qtpy.QtCore import QProcess, Qt
-    from qtpy.QtWidgets import QApplication, QCheckBox, QComboBox, QLabel, QLineEdit, QPushButton, QPlainTextEdit, QTextEdit, QVBoxLayout, QWidget, QSizePolicy
+    from qtpy.QtWidgets import QApplication, QCheckBox, QComboBox, QLabel, QLineEdit, QPushButton, QPlainTextEdit, QTextEdit, QVBoxLayout, QWidget, QSizePolicy, QTableWidget, QTableWidgetItem
 
     gui_outputs_root = Path("outputs")
     gui_models_root = Path("models")
@@ -797,6 +801,7 @@ def launch_napari_app(
     verification_layer_name = "verification_prediction_labels"
     verification_labels_layer_name = "verification_annotation_labels"
     polygon_review_state: dict[str, Any] = {"saved": False, "face_color": None, "edge_color": None}
+    verification_viewer_state: dict[str, Any] = {"dock": None, "table": None, "regions": [], "status": None, "class_filter": None, "issue_filter": None, "sort_filter": None, "preview": None, "report": None}
 
     def _load_preview(path: Path|None)->None:
         if path and path.exists():
@@ -854,6 +859,10 @@ def launch_napari_app(
         ann = np.asarray(Image.open(labels_path)).astype(np.uint8)
         layer_kwargs = verification_mask_layer_kwargs(prediction_labels, entry)
         ann_kwargs = {"name": verification_labels_layer_name, "translate": verification_overlay_translate(entry), "opacity": 0.24}
+        if entry.get("working_shape_hw") and image.shape[:2]:
+            tfm = compute_working_to_display_transform(entry.get("working_shape_hw"), image.shape[:2], [entry.get("crop_y0", 0), entry.get("crop_x0", 0)])
+            ann_kwargs["scale"] = tfm["scale_yx"]
+            ann_kwargs["translate"] = tfm["translate_yx"]
         ann_color = {1: "#fbcfe8", 2: "#fde68a", 3: "#bbf7d0", 4: "#d1d5db", 0: [0,0,0,0]}
         pred_color = {1: "#be123c", 2: "#d97706", 3: "#15803d", 4: "#6b7280", 5: "#c026d3", 0: [0,0,0,0]}
         if verification_layer_name in viewer.layers:
@@ -909,26 +918,52 @@ def launch_napari_app(
             verification_status.setText('Verification results viewer: select a current-image shared report first.')
             return
         entry=wf_state['image_entries'][idx]
-        vp=entry.get('verification_regions_path')
-        if not isinstance(vp,str) or not vp or not Path(vp).exists():
-            verification_status.setText('Verification results viewer: verification_regions.json missing; regenerate report/project run.')
+        report_path = Path(entry.get("report_summary_md")) if entry.get("report_summary_md") else None
+        resolved, candidates = resolve_verification_regions_path(verification_regions_path=entry.get('verification_regions_path'), report_path=report_path, repo_root=REPO_ROOT)
+        if resolved is None:
+            verification_status.setText(f"Verification results viewer: verification_regions.json missing. candidates={[c.as_posix() for c in candidates]}")
             return
-        regions=sort_verification_regions(filter_verification_regions(load_verification_regions(Path(vp)), 'All', 'All'), 'review_priority')
-        if not regions:
-            verification_status.setText('No verification review regions were generated for this report. Regenerate after annotation/report fix or inspect annotation artifacts.')
-            return
-        r=regions[0]
-        lab=verification_region_label(r)
-        bbox=viewer_bbox_from_region(r)
-        cy,cx=bbox['center_yx']
-        viewer.camera.center=(float(cy), float(cx))
-        rect=np.array([[bbox['y'],bbox['x']],[bbox['y'],bbox['x']+bbox['w']],[bbox['y']+bbox['h'],bbox['x']+bbox['w']],[bbox['y']+bbox['h'],bbox['x']]])
-        lname='verification_region_bbox'
-        if lname in viewer.layers:
-            viewer.layers[lname].data=[rect]
-        else:
-            viewer.add_shapes([rect], shape_type='polygon', name=lname, edge_color='cyan', face_color=[0,0,0,0], edge_width=2)
-        verification_status.setText(f"Verification results viewer: {entry.get('project_tag')} | {lab}")
+        regions = load_verification_regions(resolved)
+        msg = verification_regions_message(resolved, regions)
+        if msg:
+            verification_status.setText(msg); return
+        if verification_viewer_state["dock"] is None:
+            box = QWidget(); layout = QVBoxLayout(box)
+            report_lbl, status_lbl = QLabel("Selected report: none"), QLabel("Status: idle")
+            cf, inf, sf = QComboBox(), QComboBox(), QComboBox()
+            cf.addItems(["All"] + sorted({str(r.get("class_name","Unknown")) for r in regions}))
+            inf.addItems(["All"] + sorted({str(r.get("issue","unknown")) for r in regions}))
+            sf.addItems(["review_priority","class_name"])
+            table = QTableWidget(); table.setColumnCount(8); table.setHorizontalHeaderLabels(["class_name","source_type","score_name","score","error_px","annotated_px","issue","thumbnail"])
+            preview = QLabel("Preview: select a row")
+            jump_btn = QPushButton("Jump to selected region")
+            for w in (report_lbl, status_lbl, cf, inf, sf, table, preview, jump_btn): layout.addWidget(w)
+            viewer.window.add_dock_widget(box, area="right", name="Verification Results Viewer")
+            verification_viewer_state.update({"dock": box, "table": table, "status": status_lbl, "class_filter": cf, "issue_filter": inf, "sort_filter": sf, "preview": preview, "report": report_lbl})
+            def _refresh_table():
+                rs = sort_verification_regions(filter_verification_regions(verification_viewer_state["regions"], cf.currentText(), inf.currentText()), sf.currentText())
+                verification_viewer_state["filtered"] = rs; table.setRowCount(len(rs))
+                for ri, rr in enumerate(rs):
+                    vals=[rr.get("class_name",""), rr.get("source_type",""), rr.get("score_name",""), f"{rr.get('score')}", str(rr.get("error_px",0)), str(rr.get("annotated_px",0)), rr.get("issue",""), Path(rr.get("thumbnail_path","")).name]
+                    for ci, v in enumerate(vals): table.setItem(ri, ci, QTableWidgetItem(str(v)))
+                status_lbl.setText(f"Status: loaded_region_count={len(rs)}")
+            def _jump():
+                idxr=table.currentRow()
+                if idxr < 0 or idxr >= len(verification_viewer_state.get("filtered",[])): return
+                rr = verification_viewer_state["filtered"][idxr]
+                bbox = viewer_bbox_from_region(rr); cy, cx = bbox["center_yx"]; viewer.camera.center = (float(cy), float(cx))
+                rect=np.asarray(rectangle_vertices_from_bbox_yxhw([bbox["y"],bbox["x"],bbox["h"],bbox["w"]]), dtype=float); lname='verification_region_bbox'
+                if lname in viewer.layers: viewer.layers[lname].data=[rect]
+                else: viewer.add_shapes([rect], shape_type='polygon', name=lname, edge_color='cyan', face_color=[0,0,0,0], edge_width=2)
+                verification_status.setText(f"Verification results viewer: {verification_region_label(rr)}")
+            table.itemSelectionChanged.connect(lambda: preview.setText("Preview: row selected (click Jump to navigate)"))
+            table.cellDoubleClicked.connect(lambda *_: _jump())
+            jump_btn.clicked.connect(_jump); cf.currentTextChanged.connect(lambda *_: _refresh_table()); inf.currentTextChanged.connect(lambda *_: _refresh_table()); sf.currentTextChanged.connect(lambda *_: _refresh_table())
+            verification_viewer_state["refresh"] = _refresh_table
+        verification_viewer_state["regions"] = regions
+        verification_viewer_state["report"].setText(f"Selected report: {entry.get('project_tag')} | {resolved.as_posix()}")
+        verification_viewer_state["refresh"]()
+        verification_status.setText(f"Verification results viewer loaded: {len(regions)} regions")
 
     def _append_output()->None:
         text=bytes(project_runner.readAllStandardOutput()).decode('utf-8',errors='replace')

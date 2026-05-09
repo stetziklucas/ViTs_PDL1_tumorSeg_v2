@@ -24,6 +24,8 @@ class VerificationOverlayTests(unittest.TestCase):
         self.assertEqual(pos['score_name'],'sensitivity'); self.assertEqual(pos['error_px'], pos['annotated_px']-pos['correct_px'])
         self.assertEqual(neg['score_name'],'specificity'); self.assertEqual(neg['error_px'], neg['pred_positive_px'])
         self.assertTrue(Path(pos['preview_path']).exists()); self.assertTrue(Path(pos['thumbnail_path']).exists())
+        self.assertEqual(pos['coordinate_schema_version'], 2)
+        self.assertIn('bbox_working_yxhw', pos)
         d.cleanup()
 
     def test_fallback_components(self):
@@ -31,6 +33,7 @@ class VerificationOverlayTests(unittest.TestCase):
         self.assertGreater(out['verification_region_count'],0)
         reg=json.loads((root/'verification_regions.json').read_text())['regions']
         self.assertTrue(all(r['source_type']=='annotation_component' for r in reg))
+        self.assertTrue(all(r['bbox_working_yxhw'][0] >= 2 for r in reg))
         d.cleanup()
 
 if __name__=='__main__': unittest.main()

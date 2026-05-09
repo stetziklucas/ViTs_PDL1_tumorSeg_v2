@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 import tempfile
 import numpy as np
 from apps.annotator import default_project_tag, build_stage1_project_command, compact_path_label, resolve_verification_overlay_path, resolve_verification_annotation_labels_path, resolve_verification_prediction_labels_path, verification_overlay_translate, verification_mask_layer_kwargs, build_polygon_review_face_colors, qt_orientation, build_verification_label_layer_kwargs, launch_napari_app
-from apps.verification_results_viewer import load_verification_regions, filter_verification_regions, sort_verification_regions, verification_region_label, viewer_bbox_from_region, verification_regions_message, resolve_verification_regions_path, rectangle_vertices_from_bbox_yxhw, resolve_region_image_path, label_layer_transform_from_working_crop, get_layer_by_name, get_display_image_shape_hw
+from apps.verification_results_viewer import load_verification_regions, load_verification_regions_payload, filter_verification_regions, sort_verification_regions, verification_region_label, viewer_bbox_from_region, verification_regions_message, resolve_verification_regions_path, rectangle_vertices_from_bbox_yxhw, resolve_region_image_path, label_layer_transform_from_working_crop, build_label_layer_transform_from_entry_or_payload, compute_jump_zoom, get_layer_by_name, get_display_image_shape_hw
 
 class AnnotatorWorkflowPanelTests(unittest.TestCase):
     def test_auto_generated_project_tag(self):
@@ -22,8 +22,9 @@ class AnnotatorWorkflowPanelTests(unittest.TestCase):
         self.assertEqual(viewer_bbox_from_region(regions[0])['x'],2)
     def test_load_regions(self):
         with tempfile.TemporaryDirectory() as d:
-            p=Path(d)/'verification_regions.json'; p.write_text(json.dumps({'regions':[{'class_name':'A'}]}))
+            p=Path(d)/'verification_regions.json'; p.write_text(json.dumps({'regions':[{'class_name':'A'}], 'working_shape_hw':[10,20]}))
             self.assertEqual(len(load_verification_regions(p)),1)
+            self.assertEqual(load_verification_regions_payload(p).get("working_shape_hw"), [10,20])
     def test_regions_path_resolution(self):
         with tempfile.TemporaryDirectory() as d:
             root=Path(d); rp=root/'reports'/'report_summary.md'; rp.parent.mkdir(); rp.write_text('x')
@@ -55,6 +56,16 @@ class AnnotatorWorkflowPanelTests(unittest.TestCase):
         pred,ann,warn=build_verification_label_layer_kwargs({},(200,400))
         self.assertIsNone(pred)
         self.assertIn("Cannot place verification labels", warn)
+
+    def test_label_transform_falls_back_to_payload(self):
+        tfm=build_label_layer_transform_from_entry_or_payload({}, {"working_shape_hw":[100,200],"crop_origin_working_yx":[10,20]}, (200,400))
+        self.assertIsNone(tfm.get("warning"))
+        self.assertEqual(tfm["scale"], (2.0,2.0))
+        self.assertEqual(tfm["translate"], (20.0,40.0))
+
+    def test_jump_zoom_clamp(self):
+        z=compute_jump_zoom([0,0,2,2], canvas_shape_wh=(4096,4096), current_zoom=10.0)
+        self.assertLessEqual(z, 1.25)
 
     def test_no_local_qt_shadowing_in_viewer_open(self):
         import inspect

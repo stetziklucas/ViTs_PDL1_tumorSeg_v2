@@ -56,6 +56,20 @@ class VerificationOverlayTests(unittest.TestCase):
         self.assertTrue(any(r['source_type']=='annotation_polygon' for r in reg))
         d.cleanup()
 
+    def test_polygon_vertices_are_yx_and_scaled_from_original_shape(self):
+        d=tempfile.TemporaryDirectory(); root=Path(d.name)
+        wrk=np.zeros((100,200),dtype=np.uint8); wrk[20:30,40:50]=1
+        pred=np.zeros((100,200),dtype=np.uint8); pred[20:30,40:50]=255
+        s=root/'s.png'; p=root/'p.png'; ov=root/'ov.png'
+        Image.fromarray(wrk).save(s)
+        Image.fromarray(pred).save(p); Image.fromarray(np.dstack([pred,pred,pred])).save(ov)
+        mp=root/'m.json'; mp.write_text(json.dumps({'image_shape_hw':[1000,2000],'polygons':[{'class_name':'Positive_Tumor','vertices':[[200,400],[200,500],[300,500],[300,400]]}]}))
+        out=generate_verification_overlay(image_id='IMG',run_tag='r',scribble_labels_path=s,positive_mask_path=p,output_dir=root,label_encoding={'Positive_Tumor':1,'Negative_Tumor':2,'NonTumor':3,'Ignore':4},annotation_metadata_path=mp,overlay_base_path=ov,crop_padding_px=0)
+        top=json.loads((root/'verification_regions.json').read_text())
+        self.assertGreater(top['region_source_counts'].get('annotation_polygon',0),0)
+        self.assertGreater(out['verification_region_count'],0)
+        d.cleanup()
+
     def test_polygon_failure_warning_contains_candidates(self):
         d=tempfile.TemporaryDirectory(); root=Path(d.name)
         scribble=np.zeros((20,30),dtype=np.uint8); scribble[2:8,3:9]=1

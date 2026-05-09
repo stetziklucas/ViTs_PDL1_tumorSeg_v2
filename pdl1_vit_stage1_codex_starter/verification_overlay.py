@@ -39,14 +39,16 @@ def _shape_from_meta_value(v):
  return None
 
 
-def _candidate_source_shapes(payload, scribble_labels_path, working_shape_hw):
+def _candidate_source_shapes(payload, scribble_labels_path, roi_mask_path, working_shape_hw):
  cands=[]
  if isinstance(payload,dict):
-  for k in ("image_shape_hw","mask_shape_hw","annotation_shape_hw","display_shape_hw","image_shape","shape"):
+  for k in ("image_shape_hw","mask_shape_hw","annotation_shape_hw","display_shape_hw","original_image_shape_hw","image_shape","shape"):
    shp=_shape_from_meta_value(payload.get(k))
    if shp is not None: cands.append(shp)
  orig=_read_image_shape_hw(scribble_labels_path)
  if orig is not None: cands.append(orig)
+ roi_shape=_read_image_shape_hw(roi_mask_path)
+ if roi_shape is not None: cands.append(roi_shape)
  cands.append((int(working_shape_hw[0]), int(working_shape_hw[1])))
  out=[]
  seen=set()
@@ -73,7 +75,7 @@ def _write_region_preview(base_rgb,ann_mask,pred_mask,out_path,thumb_path):
  tp=ann_mask&pred_mask; fn=ann_mask&(~pred_mask); fp=(~ann_mask)&pred_mask; img[tp]=[0,220,0]; img[fn]=[255,60,60]; img[fp]=[255,200,40]
  Image.fromarray(img).save(out_path); Image.fromarray(img).resize((128,128),Image.Resampling.NEAREST).save(thumb_path)
 
-def generate_verification_overlay(*,image_id,run_tag,scribble_labels_path,positive_mask_path,output_dir,label_encoding,crop_padding_px=64,annotation_metadata_path=None,overlay_base_path=None):
+def generate_verification_overlay(*,image_id,run_tag,scribble_labels_path,positive_mask_path,output_dir,label_encoding,crop_padding_px=64,annotation_metadata_path=None,overlay_base_path=None,roi_mask_path=None):
  a=load_working_supervision_and_prediction_masks(image_id=image_id,scribble_labels_path=scribble_labels_path,positive_mask_path=positive_mask_path)
  scribble=a['scribble_working']; pred=a['positive_mask']>0
  annotated=np.isin(scribble,[int(label_encoding[k]) for k in ('Positive_Tumor','Negative_Tumor','NonTumor','Ignore') if k in label_encoding])
@@ -101,7 +103,7 @@ def generate_verification_overlay(*,image_id,run_tag,scribble_labels_path,positi
       if not isinstance(polys,list):
         warn_parts.append('Polygon parsing fallback: no polygons key/list in annotation metadata.')
         polys=[]
-      candidates=_candidate_source_shapes(payload, scribble_labels_path, scribble.shape[:2])
+      candidates=_candidate_source_shapes(payload, scribble_labels_path, roi_mask_path, scribble.shape[:2])
       for i,p in enumerate(polys):
         v=np.asarray((p or {}).get('vertices') or (p or {}).get('points') or (p or {}).get('data') or [],dtype=float)
         if v.ndim!=2 or v.shape[0]<3 or v.shape[1]!=2:

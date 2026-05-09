@@ -96,13 +96,45 @@ def sort_verification_regions(regions, sort_key='Highest error first'):
     return sorted(regions, key=lambda r: (-int(r.get('error_px') or 0), str(r.get('region_id', ''))))
 
 
-def get_display_image_shape_hw(viewer) -> tuple[int, int] | None:
-    if viewer is None:
+def get_layer_by_name(layers, name: str):
+    if layers is None:
         return None
-    lyr = viewer.layers.get('image') if 'image' in viewer.layers else (viewer.layers[0] if len(viewer.layers) else None)
+    if hasattr(layers, 'get'):
+        try:
+            lyr = layers.get(name)
+            if lyr is not None:
+                return lyr
+        except Exception:
+            pass
+    try:
+        lyr = layers[name]
+        if lyr is not None:
+            return lyr
+    except Exception:
+        pass
+    for lyr in list(layers):
+        if getattr(lyr, 'name', None) == name:
+            return lyr
+    return None
+
+
+def get_display_image_shape_hw(viewer) -> tuple[int, int] | None:
+    if viewer is None or getattr(viewer, 'layers', None) is None:
+        return None
+    layers = viewer.layers
+    lyr = get_layer_by_name(layers, 'image')
+    if lyr is None:
+        for cand in list(layers):
+            data = getattr(cand, 'data', None)
+            shape = getattr(data, 'shape', None)
+            if shape is not None and len(shape) >= 2:
+                lyr = cand
+                break
     if lyr is None:
         return None
-    shape = tuple(int(v) for v in lyr.data.shape)
+    shape = tuple(int(v) for v in getattr(lyr.data, 'shape', ()))
+    if len(shape) < 2:
+        return None
     return shape[:2]
 
 

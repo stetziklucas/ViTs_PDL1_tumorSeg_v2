@@ -28,6 +28,8 @@ class VerificationOverlayTests(unittest.TestCase):
         top=json.loads((root/'verification_regions.json').read_text())
         self.assertIn('region_source_counts', top)
         self.assertIn('bbox_working_yxhw', pos)
+        self.assertEqual(pos['source_type'],'annotation_polygon')
+        self.assertGreater(top['region_source_counts'].get('annotation_polygon',0),0)
         d.cleanup()
 
     def test_fallback_components(self):
@@ -40,4 +42,29 @@ class VerificationOverlayTests(unittest.TestCase):
         self.assertTrue(all(r['bbox_working_yxhw'][0] >= 2 for r in reg))
         d.cleanup()
 
+
+    def test_polygon_scaling_from_larger_source_shape(self):
+        d=tempfile.TemporaryDirectory(); root=Path(d.name)
+        scribble=np.zeros((20,30),dtype=np.uint8); scribble[4:10,6:12]=1
+        pred=np.zeros((20,30),dtype=np.uint8); pred[5:9,7:11]=255
+        s=root/'s.png'; p=root/'p.png'; ov=root/'ov.png'
+        Image.fromarray(scribble).save(s); Image.fromarray(pred).save(p); Image.fromarray(np.dstack([pred,pred,pred])).save(ov)
+        meta={'display_shape_hw':[200,300],'polygons':[{'class_name':'Positive_Tumor','vertices':[[40,60],[40,120],[100,120],[100,60]]}]}
+        mp=root/'m.json'; mp.write_text(json.dumps(meta))
+        out=generate_verification_overlay(image_id='IMG',run_tag='r',scribble_labels_path=s,positive_mask_path=p,output_dir=root,label_encoding={'Positive_Tumor':1,'Negative_Tumor':2,'NonTumor':3,'Ignore':4},annotation_metadata_path=mp,overlay_base_path=ov,crop_padding_px=0)
+        reg=json.loads((root/'verification_regions.json').read_text())['regions']
+        self.assertTrue(any(r['source_type']=='annotation_polygon' for r in reg))
+        d.cleanup()
+
+    def test_polygon_failure_warning_contains_candidates(self):
+        d=tempfile.TemporaryDirectory(); root=Path(d.name)
+        scribble=np.zeros((20,30),dtype=np.uint8); scribble[2:8,3:9]=1
+        pred=np.zeros((20,30),dtype=np.uint8)
+        s=root/'s.png'; p=root/'p.png'; ov=root/'ov.png'
+        Image.fromarray(scribble).save(s); Image.fromarray(pred).save(p); Image.fromarray(np.dstack([pred,pred,pred])).save(ov)
+        mp=root/'m.json'; mp.write_text(json.dumps({'polygons':[{'class_name':'Positive_Tumor','vertices':[[-1000,-1000],[-1000,-900],[-900,-900]]}]}))
+        generate_verification_overlay(image_id='IMG',run_tag='r',scribble_labels_path=s,positive_mask_path=p,output_dir=root,label_encoding={'Positive_Tumor':1,'Negative_Tumor':2,'NonTumor':3,'Ignore':4},annotation_metadata_path=mp,overlay_base_path=ov,crop_padding_px=0)
+        top=json.loads((root/'verification_regions.json').read_text())
+        self.assertTrue(any('candidate_source_shapes' in w for w in top.get('warnings',[])))
+        d.cleanup()
 if __name__=='__main__': unittest.main()

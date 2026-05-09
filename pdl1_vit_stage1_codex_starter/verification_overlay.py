@@ -20,6 +20,41 @@ def _crop_bounds(mask,pad):
 def _polygon_mask(shape,verts):
  c=Image.new('L',(shape[1],shape[0]),0); d=ImageDraw.Draw(c); d.polygon([(float(x),float(y)) for y,x in verts],fill=1,outline=1); return np.asarray(c)>0
 
+
+
+def _read_image_shape_hw(path: Path | None) -> tuple[int, int] | None:
+ if path is None or not path.exists():
+  return None
+ try:
+  with Image.open(path) as im:
+   w,h=im.size
+  return (int(h),int(w))
+ except Exception:
+  return None
+
+
+def _shape_from_meta_value(v):
+ if isinstance(v,(list,tuple)) and len(v)>=2:
+  return (int(v[0]), int(v[1]))
+ return None
+
+
+def _candidate_source_shapes(payload, scribble_labels_path, working_shape_hw):
+ cands=[]
+ if isinstance(payload,dict):
+  for k in ("image_shape_hw","mask_shape_hw","annotation_shape_hw","display_shape_hw","image_shape","shape"):
+   shp=_shape_from_meta_value(payload.get(k))
+   if shp is not None: cands.append(shp)
+ orig=_read_image_shape_hw(scribble_labels_path)
+ if orig is not None: cands.append(orig)
+ cands.append((int(working_shape_hw[0]), int(working_shape_hw[1])))
+ out=[]
+ seen=set()
+ for c in cands:
+  if c[0] > 0 and c[1] > 0 and c not in seen:
+   out.append(c); seen.add(c)
+ return out
+
 def _components(mask):
  h,w=mask.shape; vis=np.zeros_like(mask,bool); out=[]
  for y in range(h):
@@ -66,7 +101,7 @@ def generate_verification_overlay(*,image_id,run_tag,scribble_labels_path,positi
       if not isinstance(polys,list):
         warn_parts.append('Polygon parsing fallback: no polygons key/list in annotation metadata.')
         polys=[]
-      ann_shape=[int(scribble.shape[0]), int(scribble.shape[1])]
+      candidates=_candidate_source_shapes(payload, scribble_labels_path, scribble.shape[:2])
       for i,p in enumerate(polys):
         v=np.asarray((p or {}).get('vertices') or (p or {}).get('points') or (p or {}).get('data') or [],dtype=float)
         if v.ndim!=2 or v.shape[0]<3 or v.shape[1]!=2:
@@ -74,14 +109,26 @@ def generate_verification_overlay(*,image_id,run_tag,scribble_labels_path,positi
           continue
         cls=str((p or {}).get('class_name') or (p or {}).get('class') or (p or {}).get('label') or 'Unknown')
         wy,wx = scribble.shape[:2]
-        ay,ax = ann_shape
-        v_work=np.column_stack([v[:,0]*wy/max(1,ay), v[:,1]*wx/max(1,ax)])
-        v_crop=np.column_stack([v_work[:,0]-float(y0), v_work[:,1]-float(x0)])
-        m=_polygon_mask((ch,cw),v_crop)
-        if np.any(m):
-          regions.append({'mask':m,'class_name':cls,'annotation_index':i,'source_type':'annotation_polygon','polygon_vertices_annotation_yx':v.tolist()})
-        else:
-          warn_parts.append(f'Polygon parsing fallback: rasterized polygon empty for annotation_index={i}.')
+        chosen=None; chosen_overlap=-1.0
+        for sy,sx in candidates:
+          v_work=np.column_stack([v[:,0]*wy/max(1,sy), v[:,1]*wx/max(1,sx)])
+          v_crop=np.column_stack([v_work[:,0]-float(y0), v_work[:,1]-float(x0)])
+          m=_polygon_mask((ch,cw),v_crop)
+          if not np.any(m):
+            continue
+          expected=ANNOTATION_LABEL_MAPPING.get(cls)
+          overlap=float(((ann_crop==expected)&m).sum())/max(1,int(m.sum())) if expected is not None else 0.0
+          if overlap>chosen_overlap:
+            chosen=(m,(int(sy),int(sx)),overlap)
+            chosen_overlap=overlap
+        if chosen is None:
+          ymin,xmin=v.min(axis=0).tolist(); ymax,xmax=v.max(axis=0).tolist()
+          warn_parts.append(f'Polygon parsing fallback: rasterized polygon empty for annotation_index={i}; bbox_source={[ymin,xmin,ymax,xmax]}; candidate_source_shapes={candidates}; crop_origin={[int(y0),int(x0)]}; working_shape={[int(wy),int(wx)]}; crop_shape={[int(ch),int(cw)]}.')
+          continue
+        m,src_shape,overlap=chosen
+        if overlap < 0.05:
+          warn_parts.append(f'Polygon low-overlap warning: annotation_index={i}; source_shape={src_shape}; overlap={overlap:.4f}.')
+        regions.append({'mask':m,'class_name':cls,'annotation_index':i,'source_type':'annotation_polygon','polygon_vertices_annotation_yx':v.tolist(),'polygon_source_shape_hw':[int(src_shape[0]),int(src_shape[1])]})
     except Exception as exc:
       warn_parts.append(f'Polygon parsing fallback: JSON parse/other exception: {exc}')
   if not regions:

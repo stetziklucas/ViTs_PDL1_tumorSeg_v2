@@ -58,22 +58,25 @@ def generate_verification_overlay(*,image_id,run_tag,scribble_labels_path,positi
   summary.update({"verification_overlay_available":True,"verification_overlay_path":overlay_path.as_posix(),"verification_annotation_labels_available":True,"verification_annotation_labels_path":annotation_labels_path.as_posix(),"verification_prediction_labels_available":True,"verification_prediction_labels_path":pred_labels_path.as_posix(),"crop_y0":y0,"crop_x0":x0,"crop_h":ch,"crop_w":cw})
   base=np.asarray(Image.open(overlay_base_path).convert('RGB')) if overlay_base_path and overlay_base_path.exists() else np.full((pred.shape[0],pred.shape[1],3),96,dtype=np.uint8)
   if base.shape[:2]!=pred.shape: base=np.full((pred.shape[0],pred.shape[1],3),96,dtype=np.uint8)
-  base_crop=base[y0:y0+ch,x0:x0+cw]; rows=[]; regions=[]
+  base_crop=base[y0:y0+ch,x0:x0+cw]; rows=[]; regions=[]; warn_parts=[]
   if annotation_metadata_path and annotation_metadata_path.exists():
-    payload=json.loads(annotation_metadata_path.read_text())
-    for i,p in enumerate(payload.get('polygons',[]) if isinstance(payload,dict) else []):
-      v=np.asarray(p.get('vertices',[]),dtype=float)
+    payload=json.loads(annotation_metadata_path.read_text()); polys=[]
+    if isinstance(payload,dict): polys = payload.get('polygons',[]) or payload.get('data',[])
+    for i,p in enumerate(polys if isinstance(polys,list) else []):
+      v=np.asarray(p.get('vertices') or p.get('points') or p.get('data') or [],dtype=float)
       if v.ndim!=2 or v.shape[0]<3 or v.shape[1]!=2: continue
-      sy,sx=ch/max(1,scribble.shape[0]),cw/max(1,scribble.shape[1])
-      v2=np.column_stack([(v[:,0]*sy),(v[:,1]*sx)])
+      sy,sx=ch/max(1,scribble.shape[0]),cw/max(1,scribble.shape[1]); oy,ox=float(y0),float(x0)
+      v2=np.column_stack([((v[:,0]-oy)*sy),((v[:,1]-ox)*sx)])
       m=_polygon_mask((ch,cw),v2)
-      if np.any(m): regions.append({'mask':m,'class_name':str(p.get('class_name') or 'Unknown'),'annotation_index':i,'source_type':'annotation_polygon','bbox_annotation_yxhw':[int(v[:,0].min()),int(v[:,1].min()),max(1,int(v[:,0].max()-v[:,0].min()+1)),max(1,int(v[:,1].max()-v[:,1].min()+1))]})
+      cls=str(p.get('class_name') or p.get('class') or p.get('label') or 'Unknown')
+      if np.any(m): regions.append({'mask':m,'class_name':cls,'annotation_index':i,'source_type':'annotation_polygon','polygon_vertices_annotation_yx':v.tolist()})
   if not regions:
+    if annotation_metadata_path and annotation_metadata_path.exists(): warn_parts.append('Polygon parsing failed/fell back to annotation components.')
     for cls,lbl in ANNOTATION_LABEL_MAPPING.items():
       if lbl==0: continue
       for comp in _components(ann_crop==lbl):
         m=np.zeros_like(ann_crop,bool); m[comp[:,0],comp[:,1]]=True
-        regions.append({'mask':m,'class_name':cls,'annotation_index':None,'source_type':'annotation_component'})
+        regions.append({'mask':m,'class_name':cls,'annotation_index':None,'source_type':'annotation_component','crop_origin_working_yx':[int(y0),int(x0)]})
   for i,r in enumerate(regions):
     m=r['mask']; pred_pos=pred_crop; annpx=int(m.sum()); pp=int((pred_pos&m).sum()); cls=r['class_name']
     if annpx==0: continue
@@ -81,10 +84,14 @@ def generate_verification_overlay(*,image_id,run_tag,scribble_labels_path,positi
     elif cls in {'Negative_Tumor','NonTumor'}: cp,ep,sn,sc,iss=int((~pred_pos&m).sum()),pp,'specificity',int((~pred_pos&m).sum())/annpx,'false_positive_in_negative_context' if pp>0 else 'negative_context_clean'
     else: cp,ep,sn,sc,iss=0,pp,'ignored',None,'ignored_annotation_contains_prediction' if pp>0 else 'ignored_annotation_clean'
     ys,xs=np.where(m); by,bx,bh,bw=int(ys.min()),int(xs.min()),int(ys.max()-ys.min()+1),int(xs.max()-xs.min()+1)
+    gby,gbx = int(by + y0), int(bx + x0)
+    sy,sx = pred.shape[0]/max(1,scribble.shape[0]), pred.shape[1]/max(1,scribble.shape[1])
+    aby,abx,abh,abw = int(round(gby*sy)), int(round(gbx*sx)), max(1,int(round(bh*sy))), max(1,int(round(bw*sx)))
     prv=output_dir/'verification_regions'/f'region_{i:04d}_preview.png'; th=output_dir/'verification_regions'/f'region_{i:04d}_thumb.png'; prv.parent.mkdir(parents=True,exist_ok=True); _write_region_preview(base_crop,m,pred_pos,prv,th)
-    rows.append({'region_id':f'region_{i:04d}','source_type':r['source_type'],'annotation_index':r.get('annotation_index'),'class_name':cls,'bbox_working_yxhw':[by,bx,bh,bw],'bbox_annotation_yxhw':r.get('bbox_annotation_yxhw'),'center_annotation_yx':None if r.get('bbox_annotation_yxhw') is None else [int(r['bbox_annotation_yxhw'][0]+r['bbox_annotation_yxhw'][2]//2),int(r['bbox_annotation_yxhw'][1]+r['bbox_annotation_yxhw'][3]//2)],'annotated_px':annpx,'pred_positive_px':pp,'correct_px':int(cp),'error_px':int(ep),'score_name':sn,'score':sc,'review_priority':int(ep),'issue':iss,'preview_path':prv.as_posix(),'thumbnail_path':th.as_posix()})
+    rows.append({'region_id':f'region_{i:04d}','source_type':r['source_type'],'annotation_index':r.get('annotation_index'),'class_name':cls,'bbox_working_yxhw':[gby,gbx,bh,bw],'center_working_yx':[gby+bh//2,gbx+bw//2],'bbox_annotation_yxhw':[aby,abx,abh,abw],'center_annotation_yx':[aby+abh//2,abx+abw//2],'working_shape_hw':[int(scribble.shape[0]),int(scribble.shape[1])],'annotation_shape_hw':[int(pred.shape[0]),int(pred.shape[1])],'crop_origin_working_yx':[int(y0),int(x0)],'coordinate_schema_version':2,'annotated_px':annpx,'pred_positive_px':pp,'correct_px':int(cp),'error_px':int(ep),'score_name':sn,'score':sc,'review_priority':int(ep),'issue':iss,'preview_path':prv.as_posix(),'thumbnail_path':th.as_posix()})
   warn=None if rows else 'No regions generated from polygons or annotation components.'
-  regions_json.write_text(json.dumps({'region_count':len(rows),'regions':rows,'warning':warn},indent=2)+'\n')
+  if warn_parts: warn = ((warn + " | ") if warn else "") + " ".join(warn_parts)
+  regions_json.write_text(json.dumps({'region_count':len(rows),'regions':rows,'warning':warn,'coordinate_schema_version':2},indent=2)+'\n')
   summary.update({'verification_regions_available':len(rows)>0,'verification_regions_path':regions_json.as_posix(),'verification_region_count':len(rows),'verification_regions_warning':warn})
  summary_path.write_text(json.dumps(summary,indent=2,sort_keys=True)+'\n')
  return {**summary,'verification_overlay_summary_path':summary_path.as_posix()}

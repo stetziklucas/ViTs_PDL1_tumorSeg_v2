@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 import tempfile
 import numpy as np
 from apps.annotator import default_project_tag, build_stage1_project_command, compact_path_label, resolve_verification_overlay_path, resolve_verification_annotation_labels_path, resolve_verification_prediction_labels_path, verification_overlay_translate, verification_mask_layer_kwargs, build_polygon_review_face_colors, qt_orientation
-from apps.verification_results_viewer import load_verification_regions, filter_verification_regions, sort_verification_regions, verification_region_label, viewer_bbox_from_region, verification_regions_message
+from apps.verification_results_viewer import load_verification_regions, filter_verification_regions, sort_verification_regions, verification_region_label, viewer_bbox_from_region, verification_regions_message, resolve_verification_regions_path, rectangle_vertices_from_bbox_yxhw, compute_working_to_display_transform
 
 class AnnotatorWorkflowPanelTests(unittest.TestCase):
     def test_auto_generated_project_tag(self):
@@ -18,11 +18,23 @@ class AnnotatorWorkflowPanelTests(unittest.TestCase):
         self.assertEqual(len(filter_verification_regions(regions,'Positive_Tumor','All')),1)
         self.assertEqual(sort_verification_regions(regions,'review_priority')[0]['review_priority'],3)
         self.assertIn('Positive_Tumor', verification_region_label(regions[0]))
+        self.assertIn('src=', verification_region_label(regions[0]))
         self.assertEqual(viewer_bbox_from_region(regions[0])['x'],2)
     def test_load_regions(self):
         with tempfile.TemporaryDirectory() as d:
             p=Path(d)/'verification_regions.json'; p.write_text(json.dumps({'regions':[{'class_name':'A'}]}))
             self.assertEqual(len(load_verification_regions(p)),1)
+    def test_regions_path_resolution(self):
+        with tempfile.TemporaryDirectory() as d:
+            root=Path(d); rp=root/'reports'/'report_summary.md'; rp.parent.mkdir(); rp.write_text('x')
+            p=root/'reports'/'verification_regions.json'; p.write_text('[]')
+            resolved,_=resolve_verification_regions_path(verification_regions_path='verification_regions.json', report_path=rp, repo_root=root)
+            self.assertEqual(resolved, p)
+    def test_transform_helpers(self):
+        tfm=compute_working_to_display_transform((100,200),(200,400),(10,20))
+        self.assertEqual(tuple(round(v,2) for v in tfm['translate_yx']),(20.0,40.0))
+        verts=rectangle_vertices_from_bbox_yxhw([1,2,3,4])
+        self.assertEqual(verts[0],[1.0,2.0])
 
 if __name__=='__main__':
     unittest.main()

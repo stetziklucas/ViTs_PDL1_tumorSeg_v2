@@ -45,6 +45,27 @@ def qt_orientation(Qt: Any, name: str) -> Any:
         return getattr(Qt, name)
     raise AttributeError(f"Qt orientation {name} not available")
 
+
+
+def qt_align_center(Qt: Any) -> Any:
+    align = getattr(Qt, "AlignmentFlag", None)
+    if align is not None and hasattr(align, "AlignCenter"):
+        return align.AlignCenter
+    return getattr(Qt, "AlignCenter")
+
+
+def qt_keep_aspect_ratio(Qt: Any) -> Any:
+    mode = getattr(Qt, "AspectRatioMode", None)
+    if mode is not None and hasattr(mode, "KeepAspectRatio"):
+        return mode.KeepAspectRatio
+    return getattr(Qt, "KeepAspectRatio")
+
+
+def qt_smooth_transformation(Qt: Any) -> Any:
+    mode = getattr(Qt, "TransformationMode", None)
+    if mode is not None and hasattr(mode, "SmoothTransformation"):
+        return mode.SmoothTransformation
+    return getattr(Qt, "SmoothTransformation")
 from apps.verification_results_viewer import (
     load_verification_regions,
     filter_verification_regions,
@@ -542,6 +563,24 @@ def verification_overlay_translate(entry: dict[str, Any] | None) -> tuple[int, i
         return (0, 0)
 
 
+def build_verification_label_layer_kwargs(entry: dict[str, Any] | None, display_shape_hw: tuple[int, int] | None) -> tuple[dict[str, Any] | None, dict[str, Any] | None, str | None]:
+    pred_kwargs = {"name": "verification_prediction_labels", "opacity": 0.88, "blending": "translucent_no_depth"}
+    ann_kwargs = {"name": "verification_annotation_labels", "opacity": 0.24}
+    if not isinstance(entry, dict) or not entry.get("working_shape_hw") or not display_shape_hw:
+        return None, None, "Cannot place verification labels: missing working_shape_hw or crop_origin_working_yx"
+    crop_origin = entry.get("crop_origin_working_yx")
+    if crop_origin is None:
+        crop_y0 = entry.get("crop_y0")
+        crop_x0 = entry.get("crop_x0")
+        if crop_y0 is None or crop_x0 is None:
+            return None, None, "Cannot place verification labels: missing working_shape_hw or crop_origin_working_yx"
+        crop_origin = [crop_y0, crop_x0]
+    tfm = label_layer_transform_from_working_crop(entry.get("working_shape_hw"), display_shape_hw, crop_origin)
+    pred_kwargs.update(tfm)
+    ann_kwargs.update(tfm)
+    return pred_kwargs, ann_kwargs, None
+
+
 def verification_mask_layer_kwargs(mask: np.ndarray, entry: dict[str, Any] | None) -> dict[str, Any]:
     """Build deterministic napari kwargs for class-aware verification labels rendering."""
     return {
@@ -761,6 +800,7 @@ def launch_napari_app(
     viewer.window.add_dock_widget(status_panel, area='left', name='Annotation Save Status')
 
     from qtpy.QtCore import QProcess, Qt
+    from qtpy.QtGui import QPixmap
     from qtpy.QtWidgets import QApplication, QCheckBox, QComboBox, QLabel, QLineEdit, QPushButton, QPlainTextEdit, QTextEdit, QVBoxLayout, QWidget, QSizePolicy, QTableWidget, QTableWidgetItem
 
     gui_outputs_root = Path("outputs")
@@ -859,15 +899,10 @@ def launch_napari_app(
             show_verification_toggle.setChecked(False)
             return
         ann = np.asarray(Image.open(labels_path)).astype(np.uint8)
-        layer_kwargs = verification_mask_layer_kwargs(prediction_labels, entry)
-        ann_kwargs = {"name": verification_labels_layer_name, "translate": verification_overlay_translate(entry), "opacity": 0.24}
         display_shape = get_display_image_shape_hw(viewer)
-        if entry.get("working_shape_hw") and display_shape and entry.get("crop_y0") is not None and entry.get("crop_x0") is not None:
-            tfm = label_layer_transform_from_working_crop(entry.get("working_shape_hw"), display_shape, [entry.get("crop_y0", 0), entry.get("crop_x0", 0)])
-            ann_kwargs["scale"] = tfm["scale"]
-            ann_kwargs["translate"] = tfm["translate"]
-        elif show_verification_toggle.isChecked():
-            verification_status.setText("Cannot place verification labels: missing working_shape_hw or crop_origin_working_yx")
+        layer_kwargs, ann_kwargs, placement_warning = build_verification_label_layer_kwargs(entry, display_shape)
+        if placement_warning:
+            verification_status.setText(placement_warning)
             return
         ann_color = {1: "#fbcfe8", 2: "#fde68a", 3: "#bbf7d0", 4: "#d1d5db", 0: [0,0,0,0]}
         pred_color = {1: "#be123c", 2: "#d97706", 3: "#15803d", 4: "#6b7280", 5: "#c026d3", 0: [0,0,0,0]}
@@ -875,6 +910,7 @@ def launch_napari_app(
             layer = viewer.layers[verification_layer_name]
             layer.data = prediction_labels
             layer.translate = layer_kwargs["translate"]
+            layer.scale = layer_kwargs["scale"]
             layer.opacity = layer_kwargs["opacity"]
             layer.blending = layer_kwargs["blending"]
             layer.color = pred_color
@@ -882,7 +918,7 @@ def launch_napari_app(
         else:
             viewer.add_labels(prediction_labels, **layer_kwargs); viewer.layers[verification_layer_name].color = pred_color
         if verification_labels_layer_name in viewer.layers:
-            ll = viewer.layers[verification_labels_layer_name]; ll.data = ann; ll.translate = ann_kwargs["translate"]; ll.opacity = ann_kwargs["opacity"]; ll.color = ann_color; ll.visible = True
+            ll = viewer.layers[verification_labels_layer_name]; ll.data = ann; ll.translate = ann_kwargs["translate"]; ll.scale = ann_kwargs["scale"]; ll.opacity = ann_kwargs["opacity"]; ll.color = ann_color; ll.visible = True
         else:
             viewer.add_labels(ann, **ann_kwargs); viewer.layers[verification_labels_layer_name].color = ann_color
         viewer.layers.move(viewer.layers.index(verification_labels_layer_name), len(viewer.layers) - 2)
@@ -942,12 +978,10 @@ def launch_napari_app(
             inf.addItems(["All"] + sorted({str(r.get("issue","unknown")) for r in regions}))
             sf.addItems(["Highest error first","Lowest score first","Highest score first","Class then error","Annotation order / region id"])
             table = QTableWidget(); table.setColumnCount(8); table.setHorizontalHeaderLabels(["class_name","source_type","score_name","score","error_px","annotated_px","issue","thumbnail"])
-            from qtpy.QtWidgets import QLabel
-            from qtpy.QtGui import QPixmap
             preview = QLabel("Preview: select a row")
             preview.setMinimumHeight(280)
             preview.setScaledContents(False)
-            preview.setAlignment(Qt.AlignCenter)
+            preview.setAlignment(qt_align_center(Qt))
             preview_status = QLabel("Preview path: none")
             jump_btn = QPushButton("Jump to selected region")
             for w in (report_lbl, status_lbl, cf, inf, sf, table, preview, preview_status, jump_btn): layout.addWidget(w)
@@ -970,7 +1004,7 @@ def launch_napari_app(
                     resolved, candidates = resolve_region_image_path(image_path=rr.get(key), regions_json_path=resolved_regions_path, repo_root=REPO_ROOT)
                     if resolved is not None:
                         pm=QPixmap(resolved.as_posix())
-                        preview.setPixmap(pm.scaled(preview.size(), Qt.KeepAspectRatio, Qt.SmoothTransformation))
+                        preview.setPixmap(pm.scaled(preview.size(), qt_keep_aspect_ratio(Qt), qt_smooth_transformation(Qt)))
                         preview_status.setText(f"Preview path resolved: {resolved.as_posix()}")
                         verification_status.setText(f"Verification results viewer selected: region_id={rr.get('region_id')} preview={resolved.name}")
                         return

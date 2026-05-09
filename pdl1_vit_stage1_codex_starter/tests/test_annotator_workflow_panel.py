@@ -4,8 +4,8 @@ from pathlib import Path
 from datetime import datetime, timezone
 import tempfile
 import numpy as np
-from apps.annotator import default_project_tag, build_stage1_project_command, compact_path_label, resolve_verification_overlay_path, resolve_verification_annotation_labels_path, resolve_verification_prediction_labels_path, verification_overlay_translate, verification_mask_layer_kwargs, build_polygon_review_face_colors, qt_orientation
-from apps.verification_results_viewer import load_verification_regions, filter_verification_regions, sort_verification_regions, verification_region_label, viewer_bbox_from_region, verification_regions_message, resolve_verification_regions_path, rectangle_vertices_from_bbox_yxhw, resolve_region_image_path, label_layer_transform_from_working_crop
+from apps.annotator import default_project_tag, build_stage1_project_command, compact_path_label, resolve_verification_overlay_path, resolve_verification_annotation_labels_path, resolve_verification_prediction_labels_path, verification_overlay_translate, verification_mask_layer_kwargs, build_polygon_review_face_colors, qt_orientation, build_verification_label_layer_kwargs, launch_napari_app
+from apps.verification_results_viewer import load_verification_regions, filter_verification_regions, sort_verification_regions, verification_region_label, viewer_bbox_from_region, verification_regions_message, resolve_verification_regions_path, rectangle_vertices_from_bbox_yxhw, resolve_region_image_path, label_layer_transform_from_working_crop, get_layer_by_name, get_display_image_shape_hw
 
 class AnnotatorWorkflowPanelTests(unittest.TestCase):
     def test_auto_generated_project_tag(self):
@@ -43,6 +43,42 @@ class AnnotatorWorkflowPanelTests(unittest.TestCase):
             resolved,_=resolve_region_image_path(image_path='region_0000_preview.png', regions_json_path=rp, repo_root=root)
             self.assertEqual(resolved, img)
 
+
+    def test_label_layer_kwargs_shared_transform(self):
+        entry={"working_shape_hw":[100,200],"crop_y0":10,"crop_x0":20}
+        pred,ann,warn=build_verification_label_layer_kwargs(entry,(200,400))
+        self.assertIsNone(warn)
+        self.assertEqual(pred["scale"], ann["scale"])
+        self.assertEqual(pred["translate"], ann["translate"])
+
+    def test_label_layer_kwargs_missing_metadata(self):
+        pred,ann,warn=build_verification_label_layer_kwargs({},(200,400))
+        self.assertIsNone(pred)
+        self.assertIn("Cannot place verification labels", warn)
+
+    def test_no_local_qt_shadowing_in_viewer_open(self):
+        import inspect
+        src=inspect.getsource(launch_napari_app)
+        open_idx = src.find("def _open_verification_results_viewer")
+        self.assertNotEqual(open_idx, -1)
+        open_src = src[open_idx:]
+        self.assertNotIn("from qtpy.QtWidgets import QLabel", open_src)
+        self.assertNotIn("from qtpy.QtGui import QPixmap", open_src)
+
+    def test_get_layer_helpers_without_get(self):
+        class L: 
+            def __init__(self,name,data): self.name=name; self.data=data
+        class Layers(list):
+            def __getitem__(self,k):
+                if isinstance(k,str):
+                    for i in self:
+                        if i.name==k: return i
+                    raise KeyError(k)
+                return super().__getitem__(k)
+        layers=Layers([L('other',np.zeros((10,10))),L('image',np.zeros((11,12,3)))])
+        self.assertEqual(get_layer_by_name(layers,'image').name,'image')
+        viewer=type('V',(),{'layers':layers})()
+        self.assertEqual(get_display_image_shape_hw(viewer),(11,12))
 if __name__=='__main__':
     unittest.main()
 

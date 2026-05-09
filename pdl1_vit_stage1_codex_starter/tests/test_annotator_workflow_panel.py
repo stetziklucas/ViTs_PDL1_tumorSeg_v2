@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 import tempfile
 import numpy as np
 from apps.annotator import default_project_tag, build_stage1_project_command, compact_path_label, resolve_verification_overlay_path, resolve_verification_annotation_labels_path, resolve_verification_prediction_labels_path, verification_overlay_translate, verification_mask_layer_kwargs, build_polygon_review_face_colors, qt_orientation
-from apps.verification_results_viewer import load_verification_regions, filter_verification_regions, sort_verification_regions, verification_region_label, viewer_bbox_from_region, verification_regions_message, resolve_verification_regions_path, rectangle_vertices_from_bbox_yxhw, compute_working_to_display_transform
+from apps.verification_results_viewer import load_verification_regions, filter_verification_regions, sort_verification_regions, verification_region_label, viewer_bbox_from_region, verification_regions_message, resolve_verification_regions_path, rectangle_vertices_from_bbox_yxhw, resolve_region_image_path, label_layer_transform_from_working_crop
 
 class AnnotatorWorkflowPanelTests(unittest.TestCase):
     def test_auto_generated_project_tag(self):
@@ -14,9 +14,9 @@ class AnnotatorWorkflowPanelTests(unittest.TestCase):
         cmd=build_stage1_project_command(config_path=Path('config/base.yaml'), project_tag='training_x', raw_dir=Path('data/raw'), annotations_dir=Path('data/annotations'), outputs_root=Path('outputs'), models_root=Path('models'))
         self.assertIn('scripts/run_stage1_project.py', ' '.join(cmd))
     def test_verification_helpers(self):
-        regions=[{'class_name':'Positive_Tumor','issue':'x','review_priority':3,'score_name':'sensitivity','score':0.5,'error_px':2,'bbox_annotation_yxhw':[1,2,3,4],'center_annotation_yx':[2,3]},{'class_name':'NonTumor','issue':'y','review_priority':1,'score_name':'specificity','score':1.0,'error_px':0,'bbox_annotation_yxhw':[3,4,5,6]}]
+        regions=[{'class_name':'Positive_Tumor','issue':'x','review_priority':3,'score_name':'sensitivity','score':0.5,'error_px':2,'bbox_annotation_yxhw':[1,2,3,4],'bbox_working_yxhw':[1,2,3,4],'center_annotation_yx':[2,3]},{'class_name':'NonTumor','issue':'y','review_priority':1,'score_name':'specificity','score':1.0,'error_px':0,'bbox_annotation_yxhw':[3,4,5,6]}]
         self.assertEqual(len(filter_verification_regions(regions,'Positive_Tumor','All')),1)
-        self.assertEqual(sort_verification_regions(regions,'review_priority')[0]['review_priority'],3)
+        self.assertEqual(sort_verification_regions(regions,'Highest error first')[0]['review_priority'],3)
         self.assertIn('Positive_Tumor', verification_region_label(regions[0]))
         self.assertIn('src=', verification_region_label(regions[0]))
         self.assertEqual(viewer_bbox_from_region(regions[0])['x'],2)
@@ -31,10 +31,17 @@ class AnnotatorWorkflowPanelTests(unittest.TestCase):
             resolved,_=resolve_verification_regions_path(verification_regions_path='verification_regions.json', report_path=rp, repo_root=root)
             self.assertEqual(resolved, p)
     def test_transform_helpers(self):
-        tfm=compute_working_to_display_transform((100,200),(200,400),(10,20))
-        self.assertEqual(tuple(round(v,2) for v in tfm['translate_yx']),(20.0,40.0))
+        tfm=label_layer_transform_from_working_crop((100,200),(200,400),(10,20))
+        self.assertEqual(tuple(round(v,2) for v in tfm['translate']),(20.0,40.0))
         verts=rectangle_vertices_from_bbox_yxhw([1,2,3,4])
         self.assertEqual(verts[0],[1.0,2.0])
+
+    def test_preview_path_resolution_basename(self):
+        with tempfile.TemporaryDirectory() as d:
+            root=Path(d); rp=root/'verification_regions.json'; rp.write_text('{}')
+            (root/'verification_regions').mkdir(); img=root/'verification_regions'/'region_0000_preview.png'; img.write_bytes(b'x')
+            resolved,_=resolve_region_image_path(image_path='region_0000_preview.png', regions_json_path=rp, repo_root=root)
+            self.assertEqual(resolved, img)
 
 if __name__=='__main__':
     unittest.main()

@@ -60,16 +60,30 @@ def generate_verification_overlay(*,image_id,run_tag,scribble_labels_path,positi
   if base.shape[:2]!=pred.shape: base=np.full((pred.shape[0],pred.shape[1],3),96,dtype=np.uint8)
   base_crop=base[y0:y0+ch,x0:x0+cw]; rows=[]; regions=[]; warn_parts=[]
   if annotation_metadata_path and annotation_metadata_path.exists():
-    payload=json.loads(annotation_metadata_path.read_text()); polys=[]
-    if isinstance(payload,dict): polys = payload.get('polygons',[]) or payload.get('data',[])
-    for i,p in enumerate(polys if isinstance(polys,list) else []):
-      v=np.asarray(p.get('vertices') or p.get('points') or p.get('data') or [],dtype=float)
-      if v.ndim!=2 or v.shape[0]<3 or v.shape[1]!=2: continue
-      sy,sx=ch/max(1,scribble.shape[0]),cw/max(1,scribble.shape[1]); oy,ox=float(y0),float(x0)
-      v2=np.column_stack([((v[:,0]-oy)*sy),((v[:,1]-ox)*sx)])
-      m=_polygon_mask((ch,cw),v2)
-      cls=str(p.get('class_name') or p.get('class') or p.get('label') or 'Unknown')
-      if np.any(m): regions.append({'mask':m,'class_name':cls,'annotation_index':i,'source_type':'annotation_polygon','polygon_vertices_annotation_yx':v.tolist()})
+    try:
+      payload=json.loads(annotation_metadata_path.read_text()); polys=[]
+      if isinstance(payload,dict): polys = payload.get('polygons',[])
+      if not isinstance(polys,list):
+        warn_parts.append('Polygon parsing fallback: no polygons key/list in annotation metadata.')
+        polys=[]
+      ann_shape=[int(scribble.shape[0]), int(scribble.shape[1])]
+      for i,p in enumerate(polys):
+        v=np.asarray((p or {}).get('vertices') or (p or {}).get('points') or (p or {}).get('data') or [],dtype=float)
+        if v.ndim!=2 or v.shape[0]<3 or v.shape[1]!=2:
+          warn_parts.append(f'Polygon parsing fallback: vertices missing/invalid for annotation_index={i}.')
+          continue
+        cls=str((p or {}).get('class_name') or (p or {}).get('class') or (p or {}).get('label') or 'Unknown')
+        wy,wx = scribble.shape[:2]
+        ay,ax = ann_shape
+        v_work=np.column_stack([v[:,0]*wy/max(1,ay), v[:,1]*wx/max(1,ax)])
+        v_crop=np.column_stack([v_work[:,0]-float(y0), v_work[:,1]-float(x0)])
+        m=_polygon_mask((ch,cw),v_crop)
+        if np.any(m):
+          regions.append({'mask':m,'class_name':cls,'annotation_index':i,'source_type':'annotation_polygon','polygon_vertices_annotation_yx':v.tolist()})
+        else:
+          warn_parts.append(f'Polygon parsing fallback: rasterized polygon empty for annotation_index={i}.')
+    except Exception as exc:
+      warn_parts.append(f'Polygon parsing fallback: JSON parse/other exception: {exc}')
   if not regions:
     if annotation_metadata_path and annotation_metadata_path.exists(): warn_parts.append('Polygon parsing failed/fell back to annotation components.')
     for cls,lbl in ANNOTATION_LABEL_MAPPING.items():
@@ -91,7 +105,8 @@ def generate_verification_overlay(*,image_id,run_tag,scribble_labels_path,positi
     rows.append({'region_id':f'region_{i:04d}','source_type':r['source_type'],'annotation_index':r.get('annotation_index'),'class_name':cls,'bbox_working_yxhw':[gby,gbx,bh,bw],'center_working_yx':[gby+bh//2,gbx+bw//2],'bbox_annotation_yxhw':[aby,abx,abh,abw],'center_annotation_yx':[aby+abh//2,abx+abw//2],'working_shape_hw':[int(scribble.shape[0]),int(scribble.shape[1])],'annotation_shape_hw':[int(pred.shape[0]),int(pred.shape[1])],'crop_origin_working_yx':[int(y0),int(x0)],'coordinate_schema_version':2,'annotated_px':annpx,'pred_positive_px':pp,'correct_px':int(cp),'error_px':int(ep),'score_name':sn,'score':sc,'review_priority':int(ep),'issue':iss,'preview_path':prv.as_posix(),'thumbnail_path':th.as_posix()})
   warn=None if rows else 'No regions generated from polygons or annotation components.'
   if warn_parts: warn = ((warn + " | ") if warn else "") + " ".join(warn_parts)
-  regions_json.write_text(json.dumps({'region_count':len(rows),'regions':rows,'warning':warn,'coordinate_schema_version':2},indent=2)+'\n')
-  summary.update({'verification_regions_available':len(rows)>0,'verification_regions_path':regions_json.as_posix(),'verification_region_count':len(rows),'verification_regions_warning':warn})
+  source_counts={'annotation_polygon':sum(1 for r in rows if r.get('source_type')=='annotation_polygon'),'annotation_component':sum(1 for r in rows if r.get('source_type')=='annotation_component')}
+  regions_json.write_text(json.dumps({'region_count':len(rows),'region_source_counts':source_counts,'regions':rows,'warning':warn,'warnings':warn_parts or ([] if warn is None else [warn]),'coordinate_schema_version':2,'crop_origin_working_yx':[int(y0),int(x0)],'working_shape_hw':[int(scribble.shape[0]),int(scribble.shape[1])],'label_artifact_shape_hw':[int(ch),int(cw)]},indent=2)+'\n')
+  summary.update({'verification_regions_available':len(rows)>0,'verification_regions_path':regions_json.as_posix(),'verification_region_count':len(rows),'verification_regions_warning':warn,'verification_region_source_counts':source_counts})
  summary_path.write_text(json.dumps(summary,indent=2,sort_keys=True)+'\n')
  return {**summary,'verification_overlay_summary_path':summary_path.as_posix()}

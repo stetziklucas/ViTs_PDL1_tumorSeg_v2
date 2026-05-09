@@ -25,6 +25,8 @@ class VerificationOverlayTests(unittest.TestCase):
         self.assertEqual(neg['score_name'],'specificity'); self.assertEqual(neg['error_px'], neg['pred_positive_px'])
         self.assertTrue(Path(pos['preview_path']).exists()); self.assertTrue(Path(pos['thumbnail_path']).exists())
         self.assertEqual(pos['coordinate_schema_version'], 2)
+        top=json.loads((root/'verification_regions.json').read_text())
+        self.assertIn('region_source_counts', top)
         self.assertIn('bbox_working_yxhw', pos)
         d.cleanup()
 
@@ -33,6 +35,8 @@ class VerificationOverlayTests(unittest.TestCase):
         self.assertGreater(out['verification_region_count'],0)
         reg=json.loads((root/'verification_regions.json').read_text())['regions']
         self.assertTrue(all(r['source_type']=='annotation_component' for r in reg))
+        top=json.loads((root/'verification_regions.json').read_text())
+        self.assertIn('warnings', top)
         self.assertTrue(all(r['bbox_working_yxhw'][0] >= 2 for r in reg))
         d.cleanup()
 

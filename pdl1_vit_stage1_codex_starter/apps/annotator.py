@@ -53,7 +53,9 @@ from apps.verification_results_viewer import (
     viewer_bbox_from_region,
     resolve_verification_regions_path,
     rectangle_vertices_from_bbox_yxhw,
-    compute_working_to_display_transform,
+    get_display_image_shape_hw,
+    label_layer_transform_from_working_crop,
+    resolve_region_image_path,
     verification_regions_message,
 )
 
@@ -859,10 +861,14 @@ def launch_napari_app(
         ann = np.asarray(Image.open(labels_path)).astype(np.uint8)
         layer_kwargs = verification_mask_layer_kwargs(prediction_labels, entry)
         ann_kwargs = {"name": verification_labels_layer_name, "translate": verification_overlay_translate(entry), "opacity": 0.24}
-        if entry.get("working_shape_hw") and image.shape[:2]:
-            tfm = compute_working_to_display_transform(entry.get("working_shape_hw"), image.shape[:2], [entry.get("crop_y0", 0), entry.get("crop_x0", 0)])
-            ann_kwargs["scale"] = tfm["scale_yx"]
-            ann_kwargs["translate"] = tfm["translate_yx"]
+        display_shape = get_display_image_shape_hw(viewer)
+        if entry.get("working_shape_hw") and display_shape and entry.get("crop_y0") is not None and entry.get("crop_x0") is not None:
+            tfm = label_layer_transform_from_working_crop(entry.get("working_shape_hw"), display_shape, [entry.get("crop_y0", 0), entry.get("crop_x0", 0)])
+            ann_kwargs["scale"] = tfm["scale"]
+            ann_kwargs["translate"] = tfm["translate"]
+        elif show_verification_toggle.isChecked():
+            verification_status.setText("Cannot place verification labels: missing working_shape_hw or crop_origin_working_yx")
+            return
         ann_color = {1: "#fbcfe8", 2: "#fde68a", 3: "#bbf7d0", 4: "#d1d5db", 0: [0,0,0,0]}
         pred_color = {1: "#be123c", 2: "#d97706", 3: "#15803d", 4: "#6b7280", 5: "#c026d3", 0: [0,0,0,0]}
         if verification_layer_name in viewer.layers:
@@ -924,6 +930,7 @@ def launch_napari_app(
             verification_status.setText(f"Verification results viewer: verification_regions.json missing. candidates={[c.as_posix() for c in candidates]}")
             return
         regions = load_verification_regions(resolved)
+        resolved_regions_path = resolved
         msg = verification_regions_message(resolved, regions)
         if msg:
             verification_status.setText(msg); return
@@ -933,11 +940,17 @@ def launch_napari_app(
             cf, inf, sf = QComboBox(), QComboBox(), QComboBox()
             cf.addItems(["All"] + sorted({str(r.get("class_name","Unknown")) for r in regions}))
             inf.addItems(["All"] + sorted({str(r.get("issue","unknown")) for r in regions}))
-            sf.addItems(["review_priority","class_name"])
+            sf.addItems(["Highest error first","Lowest score first","Highest score first","Class then error","Annotation order / region id"])
             table = QTableWidget(); table.setColumnCount(8); table.setHorizontalHeaderLabels(["class_name","source_type","score_name","score","error_px","annotated_px","issue","thumbnail"])
+            from qtpy.QtWidgets import QLabel
+            from qtpy.QtGui import QPixmap
             preview = QLabel("Preview: select a row")
+            preview.setMinimumHeight(280)
+            preview.setScaledContents(False)
+            preview.setAlignment(Qt.AlignCenter)
+            preview_status = QLabel("Preview path: none")
             jump_btn = QPushButton("Jump to selected region")
-            for w in (report_lbl, status_lbl, cf, inf, sf, table, preview, jump_btn): layout.addWidget(w)
+            for w in (report_lbl, status_lbl, cf, inf, sf, table, preview, preview_status, jump_btn): layout.addWidget(w)
             viewer.window.add_dock_widget(box, area="right", name="Verification Results Viewer")
             verification_viewer_state.update({"dock": box, "table": table, "status": status_lbl, "class_filter": cf, "issue_filter": inf, "sort_filter": sf, "preview": preview, "report": report_lbl})
             def _refresh_table():
@@ -947,16 +960,35 @@ def launch_napari_app(
                     vals=[rr.get("class_name",""), rr.get("source_type",""), rr.get("score_name",""), f"{rr.get('score')}", str(rr.get("error_px",0)), str(rr.get("annotated_px",0)), rr.get("issue",""), Path(rr.get("thumbnail_path","")).name]
                     for ci, v in enumerate(vals): table.setItem(ri, ci, QTableWidgetItem(str(v)))
                 status_lbl.setText(f"Status: loaded_region_count={len(rs)}")
+            def _on_select():
+                idxr=table.currentRow()
+                if idxr < 0 or idxr >= len(verification_viewer_state.get("filtered",[])):
+                    return
+                rr = verification_viewer_state["filtered"][idxr]
+                resolved=None; candidates=[]
+                for key in ("preview_path","thumbnail_path"):
+                    resolved, candidates = resolve_region_image_path(image_path=rr.get(key), regions_json_path=resolved_regions_path, repo_root=REPO_ROOT)
+                    if resolved is not None:
+                        pm=QPixmap(resolved.as_posix())
+                        preview.setPixmap(pm.scaled(preview.size(), Qt.KeepAspectRatio, Qt.SmoothTransformation))
+                        preview_status.setText(f"Preview path resolved: {resolved.as_posix()}")
+                        verification_status.setText(f"Verification results viewer selected: region_id={rr.get('region_id')} preview={resolved.name}")
+                        return
+                preview.setText("Preview unavailable")
+                preview_status.setText(f"Preview path failed candidates: {[c.as_posix() for c in candidates]}")
+
             def _jump():
                 idxr=table.currentRow()
                 if idxr < 0 or idxr >= len(verification_viewer_state.get("filtered",[])): return
                 rr = verification_viewer_state["filtered"][idxr]
-                bbox = viewer_bbox_from_region(rr); cy, cx = bbox["center_yx"]; viewer.camera.center = (float(cy), float(cx))
-                rect=np.asarray(rectangle_vertices_from_bbox_yxhw([bbox["y"],bbox["x"],bbox["h"],bbox["w"]]), dtype=float); lname='verification_region_bbox'
+                ds = get_display_image_shape_hw(viewer)
+                bbox = viewer_bbox_from_region(rr, display_shape_hw=ds); cy, cx = bbox["center_yx"]; viewer.camera.center = (float(cy), float(cx))
+                viewer.camera.zoom = max(0.1, min(ds[0]/max(1,bbox["h"]), ds[1]/max(1,bbox["w"])) * 0.6) if ds else viewer.camera.zoom
+                rect=np.asarray(bbox["vertices"], dtype=float); lname='verification_region_bbox'
                 if lname in viewer.layers: viewer.layers[lname].data=[rect]
                 else: viewer.add_shapes([rect], shape_type='polygon', name=lname, edge_color='cyan', face_color=[0,0,0,0], edge_width=2)
-                verification_status.setText(f"Verification results viewer: {verification_region_label(rr)}")
-            table.itemSelectionChanged.connect(lambda: preview.setText("Preview: row selected (click Jump to navigate)"))
+                verification_status.setText(f"Jump region_id={rr.get('region_id')} bbox_working={rr.get('bbox_working_yxhw')} working_shape={rr.get('working_shape_hw')} display_shape={ds} bbox_display={[bbox['y'],bbox['x'],bbox['h'],bbox['w']]} center_display={bbox['center_yx']}")
+            table.itemSelectionChanged.connect(_on_select)
             table.cellDoubleClicked.connect(lambda *_: _jump())
             jump_btn.clicked.connect(_jump); cf.currentTextChanged.connect(lambda *_: _refresh_table()); inf.currentTextChanged.connect(lambda *_: _refresh_table()); sf.currentTextChanged.connect(lambda *_: _refresh_table())
             verification_viewer_state["refresh"] = _refresh_table

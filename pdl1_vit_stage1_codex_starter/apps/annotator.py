@@ -68,10 +68,13 @@ def qt_smooth_transformation(Qt: Any) -> Any:
     return getattr(Qt, "SmoothTransformation")
 from apps.verification_results_viewer import (
     load_verification_regions,
+    load_verification_regions_payload,
+    build_label_layer_transform_from_entry_or_payload,
     filter_verification_regions,
     sort_verification_regions,
     verification_region_label,
     viewer_bbox_from_region,
+    compute_jump_zoom,
     resolve_verification_regions_path,
     rectangle_vertices_from_bbox_yxhw,
     get_display_image_shape_hw,
@@ -563,19 +566,13 @@ def verification_overlay_translate(entry: dict[str, Any] | None) -> tuple[int, i
         return (0, 0)
 
 
-def build_verification_label_layer_kwargs(entry: dict[str, Any] | None, display_shape_hw: tuple[int, int] | None) -> tuple[dict[str, Any] | None, dict[str, Any] | None, str | None]:
+def build_verification_label_layer_kwargs(entry: dict[str, Any] | None, display_shape_hw: tuple[int, int] | None, regions_payload: dict[str, Any] | None = None) -> tuple[dict[str, Any] | None, dict[str, Any] | None, str | None]:
     pred_kwargs = {"name": "verification_prediction_labels", "opacity": 0.88, "blending": "translucent_no_depth"}
     ann_kwargs = {"name": "verification_annotation_labels", "opacity": 0.24}
-    if not isinstance(entry, dict) or not entry.get("working_shape_hw") or not display_shape_hw:
-        return None, None, "Cannot place verification labels: missing working_shape_hw or crop_origin_working_yx"
-    crop_origin = entry.get("crop_origin_working_yx")
-    if crop_origin is None:
-        crop_y0 = entry.get("crop_y0")
-        crop_x0 = entry.get("crop_x0")
-        if crop_y0 is None or crop_x0 is None:
-            return None, None, "Cannot place verification labels: missing working_shape_hw or crop_origin_working_yx"
-        crop_origin = [crop_y0, crop_x0]
-    tfm = label_layer_transform_from_working_crop(entry.get("working_shape_hw"), display_shape_hw, crop_origin)
+    meta = build_label_layer_transform_from_entry_or_payload(entry, regions_payload, display_shape_hw)
+    if meta.get("warning"):
+        return None, None, f"Cannot place verification labels: {meta['warning']}"
+    tfm = {"scale": meta["scale"], "translate": meta["translate"]}
     pred_kwargs.update(tfm)
     ann_kwargs.update(tfm)
     return pred_kwargs, ann_kwargs, None
@@ -900,7 +897,12 @@ def launch_napari_app(
             return
         ann = np.asarray(Image.open(labels_path)).astype(np.uint8)
         display_shape = get_display_image_shape_hw(viewer)
-        layer_kwargs, ann_kwargs, placement_warning = build_verification_label_layer_kwargs(entry, display_shape)
+        regions_payload = None
+        report_path = Path(entry.get("report_summary_md")) if entry.get("report_summary_md") else None
+        regions_path, _ = resolve_verification_regions_path(verification_regions_path=entry.get("verification_regions_path"), report_path=report_path, repo_root=REPO_ROOT)
+        if regions_path is not None:
+            regions_payload = load_verification_regions_payload(regions_path)
+        layer_kwargs, ann_kwargs, placement_warning = build_verification_label_layer_kwargs(entry, display_shape, regions_payload)
         if placement_warning:
             verification_status.setText(placement_warning)
             return
@@ -965,7 +967,8 @@ def launch_napari_app(
         if resolved is None:
             verification_status.setText(f"Verification results viewer: verification_regions.json missing. candidates={[c.as_posix() for c in candidates]}")
             return
-        regions = load_verification_regions(resolved)
+        payload = load_verification_regions_payload(resolved)
+        regions = payload.get("regions", [])
         resolved_regions_path = resolved
         msg = verification_regions_message(resolved, regions)
         if msg:
@@ -987,13 +990,16 @@ def launch_napari_app(
             for w in (report_lbl, status_lbl, cf, inf, sf, table, preview, preview_status, jump_btn): layout.addWidget(w)
             viewer.window.add_dock_widget(box, area="right", name="Verification Results Viewer")
             verification_viewer_state.update({"dock": box, "table": table, "status": status_lbl, "class_filter": cf, "issue_filter": inf, "sort_filter": sf, "preview": preview, "report": report_lbl})
+            jump_summary = {"text": "none"}
             def _refresh_table():
                 rs = sort_verification_regions(filter_verification_regions(verification_viewer_state["regions"], cf.currentText(), inf.currentText()), sf.currentText())
                 verification_viewer_state["filtered"] = rs; table.setRowCount(len(rs))
                 for ri, rr in enumerate(rs):
                     vals=[rr.get("class_name",""), rr.get("source_type",""), rr.get("score_name",""), f"{rr.get('score')}", str(rr.get("error_px",0)), str(rr.get("annotated_px",0)), rr.get("issue",""), Path(rr.get("thumbnail_path","")).name]
                     for ci, v in enumerate(vals): table.setItem(ri, ci, QTableWidgetItem(str(v)))
-                status_lbl.setText(f"Status: loaded_region_count={len(rs)}")
+                sel = table.currentRow()
+                sel_region = rs[sel].get("region_id") if 0 <= sel < len(rs) else "none"
+                status_lbl.setText(f"Status: total={len(verification_viewer_state['regions'])} filtered={len(rs)} source_counts={payload.get('region_source_counts',{})} selected_region={sel_region} jump={jump_summary['text']}")
             def _on_select():
                 idxr=table.currentRow()
                 if idxr < 0 or idxr >= len(verification_viewer_state.get("filtered",[])):
@@ -1007,6 +1013,7 @@ def launch_napari_app(
                         preview.setPixmap(pm.scaled(preview.size(), qt_keep_aspect_ratio(Qt), qt_smooth_transformation(Qt)))
                         preview_status.setText(f"Preview path resolved: {resolved.as_posix()}")
                         verification_status.setText(f"Verification results viewer selected: region_id={rr.get('region_id')} preview={resolved.name}")
+                        _refresh_table()
                         return
                 preview.setText("Preview unavailable")
                 preview_status.setText(f"Preview path failed candidates: {[c.as_posix() for c in candidates]}")
@@ -1017,11 +1024,18 @@ def launch_napari_app(
                 rr = verification_viewer_state["filtered"][idxr]
                 ds = get_display_image_shape_hw(viewer)
                 bbox = viewer_bbox_from_region(rr, display_shape_hw=ds); cy, cx = bbox["center_yx"]; viewer.camera.center = (float(cy), float(cx))
-                viewer.camera.zoom = max(0.1, min(ds[0]/max(1,bbox["h"]), ds[1]/max(1,bbox["w"])) * 0.6) if ds else viewer.camera.zoom
+                old_zoom = float(viewer.camera.zoom)
+                canvas = getattr(getattr(viewer.window, "qt_viewer", None), "canvas", None)
+                canvas_shape = (getattr(canvas, "size", (0, 0)).width(), getattr(canvas, "size", (0, 0)).height()) if canvas is not None else None
+                new_zoom = compute_jump_zoom([bbox["y"], bbox["x"], bbox["h"], bbox["w"]], canvas_shape_wh=canvas_shape, current_zoom=old_zoom)
+                if new_zoom is not None:
+                    viewer.camera.zoom = float(new_zoom)
                 rect=np.asarray(bbox["vertices"], dtype=float); lname='verification_region_bbox'
                 if lname in viewer.layers: viewer.layers[lname].data=[rect]
                 else: viewer.add_shapes([rect], shape_type='polygon', name=lname, edge_color='cyan', face_color=[0,0,0,0], edge_width=2)
-                verification_status.setText(f"Jump region_id={rr.get('region_id')} bbox_working={rr.get('bbox_working_yxhw')} working_shape={rr.get('working_shape_hw')} display_shape={ds} bbox_display={[bbox['y'],bbox['x'],bbox['h'],bbox['w']]} center_display={bbox['center_yx']}")
+                jump_summary["text"] = f"region_id={rr.get('region_id')} old_zoom={old_zoom:.3f} new_zoom={viewer.camera.zoom:.3f}"
+                verification_status.setText(f"Jump region_id={rr.get('region_id')} bbox_working_yxhw={rr.get('bbox_working_yxhw')} bbox_display_yxhw={[bbox['y'],bbox['x'],bbox['h'],bbox['w']]} display_shape_hw={ds} old_zoom={old_zoom:.3f} new_zoom={viewer.camera.zoom:.3f}")
+                _refresh_table()
             table.itemSelectionChanged.connect(_on_select)
             table.cellDoubleClicked.connect(lambda *_: _jump())
             jump_btn.clicked.connect(_jump); cf.currentTextChanged.connect(lambda *_: _refresh_table()); inf.currentTextChanged.connect(lambda *_: _refresh_table()); sf.currentTextChanged.connect(lambda *_: _refresh_table())

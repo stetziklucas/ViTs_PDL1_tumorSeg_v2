@@ -6,19 +6,27 @@ from typing import Any
 ZERO_REGION_MESSAGE = "No verification review regions were generated for this report. Regenerate after annotation/report fix or inspect annotation artifacts."
 COORDINATE_SCHEMA_VERSION = 2
 
-
-def load_verification_regions(path: Path) -> list[dict]:
+def load_verification_regions_payload(path: Path) -> dict[str, Any]:
     if not path.exists():
-        return []
+        return {"regions": []}
     payload = json.loads(path.read_text(encoding='utf-8'))
     if isinstance(payload, list):
-        return payload
-    if isinstance(payload, dict):
-        for key in ('regions', 'verification_regions', 'items'):
-            regions = payload.get(key)
-            if isinstance(regions, list):
-                return regions
-    return []
+        return {"regions": payload}
+    if not isinstance(payload, dict):
+        return {"regions": []}
+    out = dict(payload)
+    if not isinstance(out.get("regions"), list):
+        for key in ("verification_regions", "items"):
+            if isinstance(out.get(key), list):
+                out["regions"] = out.get(key)
+                break
+    if not isinstance(out.get("regions"), list):
+        out["regions"] = []
+    return out
+
+
+def load_verification_regions(path: Path) -> list[dict]:
+    return load_verification_regions_payload(path).get("regions", [])
 
 
 def resolve_verification_regions_path(*, verification_regions_path: str | None, report_path: Path | None, repo_root: Path | None) -> tuple[Path | None, list[Path]]:
@@ -161,6 +169,36 @@ def label_layer_transform_from_working_crop(working_shape_hw, display_shape_hw, 
     return {"scale": (sy, sx), "translate": (oy * sy, ox * sx)}
 
 
+def build_label_layer_transform_from_entry_or_payload(entry: dict[str, Any] | None, payload: dict[str, Any] | None, display_shape_hw: tuple[int, int] | None) -> dict[str, Any]:
+    if not display_shape_hw:
+        return {"warning": "missing display_shape_hw"}
+    srcs = [entry if isinstance(entry, dict) else {}, payload if isinstance(payload, dict) else {}]
+    working_shape_hw = None
+    crop_origin = None
+    for src in srcs:
+        shp = src.get("working_shape_hw")
+        if isinstance(shp, (list, tuple)) and len(shp) >= 2:
+            working_shape_hw = [int(shp[0]), int(shp[1])]
+            break
+    for src in srcs:
+        cor = src.get("crop_origin_working_yx")
+        if isinstance(cor, (list, tuple)) and len(cor) >= 2:
+            crop_origin = [int(cor[0]), int(cor[1])]
+            break
+        if src.get("crop_y0") is not None and src.get("crop_x0") is not None:
+            crop_origin = [int(src["crop_y0"]), int(src["crop_x0"])]
+            break
+    missing = []
+    if not working_shape_hw:
+        missing.append("working_shape_hw")
+    if not crop_origin:
+        missing.append("crop_origin_working_yx (or crop_y0/crop_x0)")
+    if missing:
+        return {"warning": f"missing {', '.join(missing)}"}
+    tfm = label_layer_transform_from_working_crop(working_shape_hw, display_shape_hw, crop_origin)
+    return {"working_shape_hw": working_shape_hw, "crop_origin_working_yx": crop_origin, **tfm, "warning": None}
+
+
 def verification_region_label(region) -> str:
     cls = region.get('class_name', 'Unknown')
     issue = region.get('issue', 'unknown')
@@ -181,3 +219,22 @@ def viewer_bbox_from_region(region, display_shape_hw=None) -> dict[str, Any]:
     bbox = working_bbox_yxhw_to_display_bbox_yxhw(wb, wshape, display_shape_hw) if (wshape and display_shape_hw) else wb
     y, x, h, w = [int(round(float(v))) for v in bbox]
     return {'y': y, 'x': x, 'h': max(1, h), 'w': max(1, w), 'center_yx': [y + max(1, h)//2, x + max(1, w)//2], 'vertices': rectangle_vertices_from_bbox_yxhw([y, x, max(1, h), max(1, w)])}
+
+
+def compute_jump_zoom(bbox_display_yxhw, canvas_shape_wh=None, current_zoom=None, min_zoom=0.05, max_zoom=1.25):
+    _, _, h, w = [max(1.0, float(v)) for v in bbox_display_yxhw]
+    target_h = max(h * 4.0, 1200.0)
+    target_w = max(w * 4.0, 1200.0)
+    if canvas_shape_wh and len(canvas_shape_wh) >= 2:
+        cw, ch = float(canvas_shape_wh[0]), float(canvas_shape_wh[1])
+        if cw > 0 and ch > 0:
+            z = min(cw / target_w, ch / target_h)
+        else:
+            z = None
+    else:
+        z = None
+    if z is None:
+        if current_zoom is None:
+            return None
+        z = float(current_zoom) * 0.75
+    return max(float(min_zoom), min(float(max_zoom), float(z)))

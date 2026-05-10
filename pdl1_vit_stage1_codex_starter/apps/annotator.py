@@ -75,6 +75,8 @@ from apps.verification_results_viewer import (
     verification_region_label,
     viewer_bbox_from_region,
     compute_jump_zoom,
+    canvas_size_wh,
+    set_camera_center_yx,
     resolve_verification_regions_path,
     rectangle_vertices_from_bbox_yxhw,
     get_display_image_shape_hw,
@@ -1023,18 +1025,31 @@ def launch_napari_app(
                 if idxr < 0 or idxr >= len(verification_viewer_state.get("filtered",[])): return
                 rr = verification_viewer_state["filtered"][idxr]
                 ds = get_display_image_shape_hw(viewer)
-                bbox = viewer_bbox_from_region(rr, display_shape_hw=ds); cy, cx = bbox["center_yx"]; viewer.camera.center = (float(cy), float(cx))
+                bbox = viewer_bbox_from_region(rr, display_shape_hw=ds); cy, cx = bbox["center_yx"]
+                center_used = set_camera_center_yx(viewer, [cy, cx])
                 old_zoom = float(viewer.camera.zoom)
                 canvas = getattr(getattr(viewer.window, "qt_viewer", None), "canvas", None)
-                canvas_shape = (getattr(canvas, "size", (0, 0)).width(), getattr(canvas, "size", (0, 0)).height()) if canvas is not None else None
+                canvas_shape = canvas_size_wh(canvas)
                 new_zoom = compute_jump_zoom([bbox["y"], bbox["x"], bbox["h"], bbox["w"]], canvas_shape_wh=canvas_shape, current_zoom=old_zoom)
                 if new_zoom is not None:
                     viewer.camera.zoom = float(new_zoom)
                 rect=np.asarray(bbox["vertices"], dtype=float); lname='verification_region_bbox'
-                if lname in viewer.layers: viewer.layers[lname].data=[rect]
-                else: viewer.add_shapes([rect], shape_type='polygon', name=lname, edge_color='cyan', face_color=[0,0,0,0], edge_width=2)
+                lyr = viewer.layers[lname] if lname in viewer.layers else None
+                if lyr is None:
+                    lyr = viewer.add_shapes([rect], shape_type='polygon', name=lname, edge_color='cyan', face_color=[0,0,0,0], edge_width=6, opacity=1.0)
+                else:
+                    lyr.data=[rect]
+                lyr.visible = True
+                lyr.opacity = 1.0
+                lyr.edge_color = 'cyan'
+                lyr.face_color = [0,0,0,0]
+                lyr.edge_width = 6
+                try:
+                    viewer.layers.move(viewer.layers.index(lyr), len(viewer.layers)-1)
+                except Exception:
+                    pass
                 jump_summary["text"] = f"region_id={rr.get('region_id')} old_zoom={old_zoom:.3f} new_zoom={viewer.camera.zoom:.3f}"
-                verification_status.setText(f"Jump region_id={rr.get('region_id')} bbox_working_yxhw={rr.get('bbox_working_yxhw')} bbox_display_yxhw={[bbox['y'],bbox['x'],bbox['h'],bbox['w']]} display_shape_hw={ds} old_zoom={old_zoom:.3f} new_zoom={viewer.camera.zoom:.3f}")
+                verification_status.setText(f"Jump region_id={rr.get('region_id')} source_type={rr.get('source_type')} bbox_working_yxhw={rr.get('bbox_working_yxhw')} working_shape_hw={rr.get('working_shape_hw')} display_shape_hw={ds} bbox_display_yxhw={[bbox['y'],bbox['x'],bbox['h'],bbox['w']]} center_display_yx={list(center_used[-2:])} canvas_shape_wh={canvas_shape} old_zoom={old_zoom:.3f} new_zoom={float(viewer.camera.zoom):.3f}")
                 _refresh_table()
             table.itemSelectionChanged.connect(_on_select)
             table.cellDoubleClicked.connect(lambda *_: _jump())

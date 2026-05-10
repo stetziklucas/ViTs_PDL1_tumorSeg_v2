@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 import tempfile
 import numpy as np
 from apps.annotator import default_project_tag, build_stage1_project_command, compact_path_label, resolve_verification_overlay_path, resolve_verification_annotation_labels_path, resolve_verification_prediction_labels_path, verification_overlay_translate, verification_mask_layer_kwargs, build_polygon_review_face_colors, qt_orientation, build_verification_label_layer_kwargs, launch_napari_app
-from apps.verification_results_viewer import load_verification_regions, load_verification_regions_payload, filter_verification_regions, sort_verification_regions, verification_region_label, viewer_bbox_from_region, verification_regions_message, resolve_verification_regions_path, rectangle_vertices_from_bbox_yxhw, resolve_region_image_path, label_layer_transform_from_working_crop, build_label_layer_transform_from_entry_or_payload, compute_jump_zoom, get_layer_by_name, get_display_image_shape_hw
+from apps.verification_results_viewer import load_verification_regions, load_verification_regions_payload, filter_verification_regions, sort_verification_regions, verification_region_label, viewer_bbox_from_region, verification_regions_message, resolve_verification_regions_path, rectangle_vertices_from_bbox_yxhw, resolve_region_image_path, label_layer_transform_from_working_crop, build_label_layer_transform_from_entry_or_payload, compute_jump_zoom, get_layer_by_name, get_display_image_shape_hw, canvas_size_wh, set_camera_center_yx
 
 class AnnotatorWorkflowPanelTests(unittest.TestCase):
     def test_auto_generated_project_tag(self):
@@ -65,7 +65,30 @@ class AnnotatorWorkflowPanelTests(unittest.TestCase):
 
     def test_jump_zoom_clamp(self):
         z=compute_jump_zoom([0,0,2,2], canvas_shape_wh=(4096,4096), current_zoom=10.0)
-        self.assertLessEqual(z, 1.25)
+        self.assertLessEqual(z, 0.90)
+        z2=compute_jump_zoom([0,0,5000,5000], canvas_shape_wh=(320,240), current_zoom=0.3)
+        self.assertGreaterEqual(z2, 0.04)
+        self.assertEqual(compute_jump_zoom([0,0,100,100], canvas_shape_wh=None, current_zoom=0.42), 0.42)
+
+    def test_canvas_size_wh_variants(self):
+        class QSizeM:
+            def width(self): return 800
+            def height(self): return 600
+        class QSizeA:
+            width=700; height=500
+        self.assertEqual(canvas_size_wh(type("C",(),{"size":(1024,768)})()), (1024,768))
+        self.assertEqual(canvas_size_wh(type("C",(),{"size":[1200,900]})()), (1200,900))
+        self.assertEqual(canvas_size_wh(type("C",(),{"size":QSizeM()})()), (800,600))
+        self.assertEqual(canvas_size_wh(type("C",(),{"size":QSizeA()})()), (700,500))
+        self.assertIsNone(canvas_size_wh(type("C",(),{})()))
+        self.assertIsNone(canvas_size_wh(type("C",(),{"size":"bad"})()))
+
+    def test_set_camera_center_preserves_leading_dims(self):
+        cam=type("Cam",(),{"center":(0.0, 100.0, 200.0)})()
+        viewer=type("V",(),{"camera":cam})()
+        out=set_camera_center_yx(viewer, [10.5,20.5])
+        self.assertEqual(out, (0.0, 10.5, 20.5))
+        self.assertEqual(viewer.camera.center, (0.0, 10.5, 20.5))
 
     def test_no_local_qt_shadowing_in_viewer_open(self):
         import inspect
@@ -75,6 +98,7 @@ class AnnotatorWorkflowPanelTests(unittest.TestCase):
         open_src = src[open_idx:]
         self.assertNotIn("from qtpy.QtWidgets import QLabel", open_src)
         self.assertNotIn("from qtpy.QtGui import QPixmap", open_src)
+        self.assertNotIn("getattr(canvas, \"size\", (0, 0)).width()", open_src)
 
     def test_get_layer_helpers_without_get(self):
         class L: 

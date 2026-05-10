@@ -221,20 +221,83 @@ def viewer_bbox_from_region(region, display_shape_hw=None) -> dict[str, Any]:
     return {'y': y, 'x': x, 'h': max(1, h), 'w': max(1, w), 'center_yx': [y + max(1, h)//2, x + max(1, w)//2], 'vertices': rectangle_vertices_from_bbox_yxhw([y, x, max(1, h), max(1, w)])}
 
 
-def compute_jump_zoom(bbox_display_yxhw, canvas_shape_wh=None, current_zoom=None, min_zoom=0.05, max_zoom=1.25):
-    _, _, h, w = [max(1.0, float(v)) for v in bbox_display_yxhw]
-    target_h = max(h * 4.0, 1200.0)
-    target_w = max(w * 4.0, 1200.0)
+def _coerce_positive_int(value: Any) -> int | None:
+    try:
+        iv = int(round(float(value)))
+    except Exception:
+        return None
+    return iv if iv > 0 else None
+
+
+def _extract_wh_from_size_like(size_obj: Any) -> tuple[int, int] | None:
+    if size_obj is None:
+        return None
+    if isinstance(size_obj, (list, tuple)) and len(size_obj) >= 2:
+        w = _coerce_positive_int(size_obj[0]); h = _coerce_positive_int(size_obj[1])
+        return (w, h) if (w and h) else None
+    width = height = None
+    if hasattr(size_obj, "width") and hasattr(size_obj, "height"):
+        try:
+            width = size_obj.width() if callable(size_obj.width) else size_obj.width
+            height = size_obj.height() if callable(size_obj.height) else size_obj.height
+        except Exception:
+            width = height = None
+    w = _coerce_positive_int(width); h = _coerce_positive_int(height)
+    return (w, h) if (w and h) else None
+
+
+def canvas_size_wh(canvas) -> tuple[int, int] | None:
+    """Return canvas (width, height) if available across qt/vispy runtime variants."""
+    if canvas is None:
+        return None
+    for cand in (
+        getattr(canvas, "size", None),
+        getattr(canvas, "physical_size", None),
+        getattr(getattr(canvas, "native", None), "size", None),
+    ):
+        wh = _extract_wh_from_size_like(cand() if callable(cand) else cand)
+        if wh is not None:
+            return wh
+    return None
+
+
+def compute_jump_zoom(
+    bbox_display_yxhw,
+    canvas_shape_wh,
+    current_zoom=None,
+    min_context_px=1600,
+    bbox_margin_factor=5.0,
+    min_zoom=0.04,
+    max_zoom=0.90,
+):
+    try:
+        h = max(1.0, float(bbox_display_yxhw[2]))
+        w = max(1.0, float(bbox_display_yxhw[3]))
+    except Exception:
+        h = w = 1.0
+    target_h = max(h * float(bbox_margin_factor), float(min_context_px))
+    target_w = max(w * float(bbox_margin_factor), float(min_context_px))
+    zoom = None
     if canvas_shape_wh and len(canvas_shape_wh) >= 2:
-        cw, ch = float(canvas_shape_wh[0]), float(canvas_shape_wh[1])
-        if cw > 0 and ch > 0:
-            z = min(cw / target_w, ch / target_h)
+        cw = _coerce_positive_int(canvas_shape_wh[0]); ch = _coerce_positive_int(canvas_shape_wh[1])
+        if cw and ch:
+            zoom = min(float(ch) / target_h, float(cw) / target_w)
+    if zoom is None:
+        return float(current_zoom) if current_zoom is not None else None
+    return max(float(min_zoom), min(float(max_zoom), float(zoom)))
+
+
+def set_camera_center_yx(viewer, center_yx):
+    y, x = float(center_yx[0]), float(center_yx[1])
+    fallback = (y, x)
+    try:
+        cur = tuple(getattr(getattr(viewer, "camera", None), "center", fallback))
+        if len(cur) >= 2:
+            out = tuple(cur[:-2]) + (y, x)
         else:
-            z = None
-    else:
-        z = None
-    if z is None:
-        if current_zoom is None:
-            return None
-        z = float(current_zoom) * 0.75
-    return max(float(min_zoom), min(float(max_zoom), float(z)))
+            out = fallback
+        viewer.camera.center = out
+        return out
+    except Exception:
+        viewer.camera.center = fallback
+        return fallback

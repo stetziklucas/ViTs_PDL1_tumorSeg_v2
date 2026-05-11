@@ -1,3 +1,4 @@
+import pytest
 from types import SimpleNamespace
 import numpy as np
 import torch
@@ -32,3 +33,19 @@ def test_hf_encoder_pooling_auto(monkeypatch):
     out=enc.encode_tiles([Image.new('RGB',(4,4))])
     assert out.shape==(1,5) and out.dtype==np.float32
 
+
+
+
+def test_hf_encoder_transformers_onnx_guidance(monkeypatch):
+    class Proc:
+        @classmethod
+        def from_pretrained(cls, *a, **k):
+            return cls()
+    class Model:
+        @classmethod
+        def from_pretrained(cls, *a, **k):
+            raise ModuleNotFoundError("No module named 'transformers.onnx'")
+    monkeypatch.setitem(__import__('sys').modules, 'transformers', SimpleNamespace(AutoImageProcessor=Proc, AutoModel=Model))
+    spec=EncoderSpec('hibou_b','H','hf_transformers','histai/hibou-b',trust_remote_code=True,extra={'pooling':'auto'})
+    with pytest.raises(RuntimeError, match=r"transformers\.onnx.*transformers>=4\.53\.3,<5.*check_embedding_encoder_env\.py"):
+        HfTransformersTileEmbeddingEncoder(spec)

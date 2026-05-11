@@ -342,3 +342,16 @@ Shared training does not change the Stage 1 model family (frozen ViT embeddings 
 
 
 Verification review UX: GUI review now renders two aligned layers for annotated-region development review (not whole-slide validation): class-aware annotation labels plus a darker/more-opaque positive prediction mask.
+
+
+### Hibou-B troubleshooting
+
+- authenticate with `hf auth login`
+- accept model access in the browser
+- use a read token
+- use `transformers>=4.53.3,<5`
+- run:
+
+```bash
+python scripts/check_embedding_encoder_env.py --embedding-encoder hibou_b --try-load
+```

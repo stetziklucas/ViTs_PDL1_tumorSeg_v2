@@ -21,6 +21,15 @@ class HfTransformersTileEmbeddingEncoder(TileEmbeddingEncoder):
             self.processor = AutoImageProcessor.from_pretrained(spec.model_name, trust_remote_code=spec.trust_remote_code)
             self.model = AutoModel.from_pretrained(spec.model_name, trust_remote_code=spec.trust_remote_code)
         except Exception as exc:
+            message = str(exc)
+            if "transformers.onnx" in message:
+                raise RuntimeError(
+                    f"Failed to load Hugging Face encoder '{spec.model_name}'. Hibou-B access/auth may already be correct if processor/config files were downloaded, "
+                    "but the immediate issue is Transformers compatibility with trusted remote code. "
+                    "Hibou-B remote code currently requires transformers.onnx. Install transformers>=4.53.3,<5 and rerun "
+                    "`python scripts/check_embedding_encoder_env.py --embedding-encoder hibou_b --try-load`. "
+                    f"Original exception: {exc}"
+                ) from exc
             raise RuntimeError(
                 f"Failed to load Hugging Face encoder '{spec.model_name}'. Hibou-B is gated and may require accepted Hugging Face access. "
                 "Use huggingface-cli login or set HF_TOKEN/HUGGINGFACE_HUB_TOKEN. trust_remote_code=True is required by the model card. "

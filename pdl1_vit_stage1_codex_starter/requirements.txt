@@ -15,7 +15,7 @@ openslide-python
 # Linux note: OpenSlide system libraries/tools are also required for .svs support
 # (for example on Debian/Ubuntu: libopenslide0 openslide-tools)
 
-transformers
+transformers>=4.53.3,<5
 
 huggingface_hub
 

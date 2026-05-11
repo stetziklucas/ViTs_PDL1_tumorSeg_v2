@@ -130,6 +130,9 @@ def _validate_cache_meta(cache_meta_path: Path, *, allow_nonpretrained_embedding
 
 
 def _resolve_cases(args: argparse.Namespace) -> list[dict[str, Any]]:
+    if encoder_provenance is not None:
+        summary["encoder_provenance"] = encoder_provenance
+
     if args.cohort_file is None:
         return [
             {
@@ -364,6 +367,12 @@ def main() -> None:
 
     training_metrics = metric_bundle(y, usable["prob_positive"].to_numpy(dtype=float), threshold=threshold)
 
+    encoder_meta_path = args.embeddings_dir / "embeddings_cache_meta.json"
+    encoder_provenance = None
+    if encoder_meta_path.exists():
+        cache_meta = json.loads(encoder_meta_path.read_text(encoding="utf-8"))
+        encoder_provenance = {k: cache_meta.get(k) for k in ["encoder_id","encoder_display_name","encoder_backend","encoder_model_name","encoder_pooling","embedding_dim","embedding_dtype","encoder_weight_source","encoder_trust_remote_code","encoder_requires_hf_auth"]}
+
     summary = {
         "model_type": "logistic_regression",
         "threshold": threshold,
@@ -393,6 +402,9 @@ def main() -> None:
             "metrics_path": str(metrics_path.as_posix()),
         },
     }
+
+    if encoder_provenance is not None:
+        summary["encoder_provenance"] = encoder_provenance
 
     if args.cohort_file is None:
         summary["artifacts"]["probability_manifest_path"] = str(args.probs_manifest.as_posix())

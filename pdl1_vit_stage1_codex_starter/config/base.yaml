@@ -54,6 +54,21 @@ embedding_encoder:
       device: "cpu"
       batch_size: 32
       embedding_format: npy
+    hibou_b:
+      display_name: "Hibou-B pathology ViT"
+      backend: hf_transformers
+      model_name: "histai/hibou-b"
+      pretrained: true
+      frozen: true
+      device: "cpu"
+      batch_size: 4
+      embedding_format: npy
+      input_size: 224
+      pooling: auto
+      trust_remote_code: true
+      requires_hf_auth: true
+      license: "apache-2.0"
+      usage_note: "Gated Hugging Face model; accept access conditions before first use. Research/development use only."
 
 tile_labels:
   min_labeled_fraction: 0.05

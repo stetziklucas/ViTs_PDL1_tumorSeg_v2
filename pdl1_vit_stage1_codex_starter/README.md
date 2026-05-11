@@ -32,6 +32,15 @@ Current main supports:
 
 In short: Stage 1 is no longer placeholder-only; most core scripts now run real artifact-producing workflows.
 
+## Embedding encoder registry (PR1)
+
+Stage 1 embedding generation now resolves a configurable encoder registry via `embedding_encoder` in `config/base.yaml`.
+
+- PR1 supports only `current_timm` (the existing timm baseline behavior).
+- Future backends (for example Hibou) should be added as new registry entries/adapters.
+- Embedding artifact filenames and layout are unchanged: `embeddings.npy`, `tile_manifest_with_embeddings_index.csv`, `embeddings_cache_meta.json`.
+- Encoder provenance is recorded in `embeddings_cache_meta.json` (for example `encoder_id`, backend/model, dtype/dim, and normalized encoder config).
+
 ## Working image space for `.svs`
 
 For `.svs` in tile extraction / embedding / tile-label generation / pixel training / inference:

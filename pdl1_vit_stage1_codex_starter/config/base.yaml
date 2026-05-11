@@ -42,6 +42,19 @@ vit:
   batch_size: 32
   embedding_format: npy
 
+embedding_encoder:
+  selected: current_timm
+  registry:
+    current_timm:
+      display_name: "Current ViT baseline"
+      backend: timm
+      model_name: "vit_base_patch16_224"
+      pretrained: true
+      frozen: true
+      device: "cpu"
+      batch_size: 32
+      embedding_format: npy
+
 tile_labels:
   min_labeled_fraction: 0.05
   positive_min_fraction: 0.20

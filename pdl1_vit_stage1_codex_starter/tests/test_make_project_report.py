@@ -178,5 +178,10 @@ class MakeProjectReportTests(unittest.TestCase):
             self.assertEqual(result["development_metrics"]["false_positive_px"], 4)
 
 
+    def test_training_summary_markdown_includes_encoder_columns(self) -> None:
+        payload = {"aggregate_metrics":{"false_positive_px":0,"false_negative_px":0,"precision":1.0,"sensitivity":1.0,"f1":1.0,"training_log_loss_total":1.0},"aggregate_class_metrics":{"Positive_Tumor":{"annotated_px":1,"tp_px":1,"fn_px":0,"sensitivity":1.0},"Negative_Tumor":{"annotated_px":1,"tn_px":1,"fp_px":0,"specificity":1.0},"NonTumor":{"annotated_px":1,"tn_px":1,"fp_px":0,"specificity":1.0}},"included_runs":[{"run_tag":"r","image_id":"i","encoder_provenance":{"encoder_id":"hibou_b","encoder_backend":"hf_transformers","embedding_dim":768},"development_metrics":{"false_positive_px":0,"false_negative_px":0,"precision":1.0,"sensitivity":1.0,"f1":1.0},"supervision_audit":{"polygon_counts":{},"annotated_pixel_counts":{},"tile_label_counts":{},"ignored_tile_count":0}}],"images_needing_attention":[],"skipped_runs":[]}
+        text = build_training_summary_markdown(payload)
+        self.assertIn("hibou_b / hf_transformers / 768", text)
+
 if __name__ == "__main__":
     unittest.main()

@@ -113,6 +113,7 @@ def _coerce_report_payload_from_summary(
         "supervision_audit": supervision,
         "warnings": _build_warnings_from_report_payload(report_summary),
         "working_space_note": report_summary.get("working_space_note", ""),
+        "encoder_provenance": report_summary.get("encoder_provenance"),
         "artifacts": {
             "metrics_json": metrics_path.as_posix(),
             "positive_mask": mask_path.as_posix(),
@@ -256,8 +257,8 @@ def build_training_summary_markdown(payload: dict[str, Any]) -> str:
         "",
         "## Per-image breakdown",
         "",
-        "| run_tag | image_id | polygons(+/-tumor/non) | pixels(+/-tumor/non) | tile labels(P/N/I) | ignored tiles | false_positive_px | false_negative_px | precision | sensitivity | f1 |",
-        "| --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |",
+        "| run_tag | image_id | encoder | polygons(+/-tumor/non) | pixels(+/-tumor/non) | tile labels(P/N/I) | ignored tiles | false_positive_px | false_negative_px | precision | sensitivity | f1 |",
+        "| --- | --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |",
     ]
     for row in payload["included_runs"]:
         m = row["development_metrics"]
@@ -266,7 +267,7 @@ def build_training_summary_markdown(payload: dict[str, Any]) -> str:
         pixel_counts = audit.get("annotated_pixel_counts", {})
         tile_counts = audit.get("tile_label_counts", {})
         lines.append(
-            f"| {row['run_tag']} | {row['image_id']} | "
+            f"| {row['run_tag']} | {row['image_id']} | {(row.get('encoder_provenance') or {}).get('encoder_id', 'n/a')} / {(row.get('encoder_provenance') or {}).get('encoder_backend', 'n/a')} / {(row.get('encoder_provenance') or {}).get('embedding_dim', 'n/a')} | "
             f"{int(polygon_counts.get('Positive_Tumor', 0))}/{int(polygon_counts.get('Negative_Tumor', 0))}/{int(polygon_counts.get('NonTumor', 0))} | "
             f"{int(pixel_counts.get('Positive_Tumor', 0))}/{int(pixel_counts.get('Negative_Tumor', 0))}/{int(pixel_counts.get('NonTumor', 0))} | "
             f"{int(tile_counts.get('Positive_Context', 0))}/{int(tile_counts.get('Negative_Context', 0))}/{int(tile_counts.get('Ignore', 0))} | "

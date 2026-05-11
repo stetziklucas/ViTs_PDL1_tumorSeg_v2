@@ -9,12 +9,11 @@ import logging
 from pathlib import Path
 from typing import Any
 
+from encoder_backends import TimmTileEmbeddingEncoder, resolve_encoder_spec
+
 import numpy as np
 import pandas as pd
-import timm
-import torch
 from PIL import Image
-from timm.data import create_transform, resolve_model_data_config
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -25,6 +24,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--input", type=Path, default=Path("outputs/tiles"), help="Tile manifest/input directory.")
     parser.add_argument("--raw-dir", type=Path, default=Path("data/raw"), help="Raw image directory.")
     parser.add_argument("--output-dir", type=Path, default=Path("outputs/embeddings"), help="Embedding output directory.")
+    parser.add_argument("--embedding-encoder", type=str, default=None, help="Optional encoder_id override.")
+    parser.add_argument("--encoder", type=str, default=None, help="Alias for --embedding-encoder.")
     return parser
 
 
@@ -56,16 +57,19 @@ def sha256_file(path: Path) -> str:
 def make_cache_signature(
     image_hash: str,
     tile_manifest_hash: str,
-    vit_cfg: dict[str, Any],
+    encoder_cfg: dict[str, Any],
     tile_size_px: int,
 ) -> str:
     """Create deterministic signature for embedding cache validity."""
     payload = {
         "image_sha256": image_hash,
         "tile_manifest_sha256": tile_manifest_hash,
-        "encoder_backend": vit_cfg.get("backend", "timm"),
-        "encoder_model_name": vit_cfg.get("model_name", "vit_base_patch16_224"),
-        "encoder_frozen": bool(vit_cfg.get("frozen", True)),
+        "encoder_id": encoder_cfg.get("encoder_id", "current_timm"),
+        "encoder_backend": encoder_cfg.get("backend", "timm"),
+        "encoder_model_name": encoder_cfg.get("model_name", "vit_base_patch16_224"),
+        "encoder_pretrained": bool(encoder_cfg.get("pretrained", True)),
+        "encoder_frozen": bool(encoder_cfg.get("frozen", True)),
+        "encoder_input_size": encoder_cfg.get("input_size"),
         "tile_size_px": int(tile_size_px),
     }
     encoded = json.dumps(payload, sort_keys=True).encode("utf-8")
@@ -143,11 +147,12 @@ def main() -> None:
     args = build_parser().parse_args()
     cfg = load_config(args.config)
 
-    vit_cfg = cfg.get("vit", {})
+    if args.embedding_encoder and args.encoder and args.embedding_encoder != args.encoder:
+        raise ValueError("--embedding-encoder and --encoder conflict; provide only one encoder_id value.")
+    cli_encoder = args.embedding_encoder or args.encoder
+    spec = resolve_encoder_spec(cfg, cli_encoder)
     tiling_cfg = cfg.get("tiling", {})
     svs_max_dimension = int(tiling_cfg.get("svs_max_dimension", 4096))
-    if not bool(vit_cfg.get("frozen", True)):
-        raise ValueError("Stage 1 requires frozen ViT encoder (vit.frozen must be true).")
 
     tile_manifest_path = args.input / "tile_manifest.csv"
     if not tile_manifest_path.exists():
@@ -167,7 +172,7 @@ def main() -> None:
     image_hash = sha256_file(image_path)
     tile_manifest_hash = sha256_file(tile_manifest_path)
     tile_size_px = int(tiling_cfg.get("tile_size_px", 224))
-    cache_signature = make_cache_signature(image_hash, tile_manifest_hash, vit_cfg, tile_size_px)
+    cache_signature = make_cache_signature(image_hash, tile_manifest_hash, spec.normalized_config(), tile_size_px)
 
     if cache_meta_path.exists() and embeddings_path.exists() and index_manifest_path.exists():
         with cache_meta_path.open("r", encoding="utf-8") as handle:
@@ -177,30 +182,16 @@ def main() -> None:
             logging.info("Embeddings: %s", embeddings_path)
             return
 
-    device = torch.device(str(vit_cfg.get("device", "cpu")))
-    model_name = str(vit_cfg.get("model_name", "vit_base_patch16_224"))
-    batch_size = int(vit_cfg.get("batch_size", 32))
-
+    require_pretrained = image_path.suffix.lower() == ".svs"
     try:
-        model = timm.create_model(model_name, pretrained=True, num_classes=0)
-        encoder_weight_source = "pretrained"
+        encoder = TimmTileEmbeddingEncoder(spec, require_pretrained=require_pretrained)
     except Exception as exc:
-        if image_path.suffix.lower() == ".svs":
+        if require_pretrained:
             raise RuntimeError(
                 "Pretrained timm weights are required for real .svs embedding runs. "
                 f"Original error: {exc}"
             ) from exc
-        logging.warning("Pretrained weights unavailable (%s). Falling back to randomly initialized frozen encoder.", exc)
-        model = timm.create_model(model_name, pretrained=False, num_classes=0)
-        encoder_weight_source = "random_init_fallback"
-    model.eval()
-    for param in model.parameters():
-        param.requires_grad_(False)
-    model.to(device)
-
-    data_cfg = resolve_model_data_config(model)
-    transform = create_transform(**data_cfg, is_training=False)
-
+        raise
     expected_dims: tuple[int, int] | None = None
     if image_path.suffix.lower() == ".svs":
         width = int((manifest_df["tile_x"] + manifest_df["tile_w"]).max())
@@ -213,26 +204,20 @@ def main() -> None:
     )
 
     outputs: list[np.ndarray] = []
-    batch_tensors: list[torch.Tensor] = []
-    with torch.inference_mode():
-        for row in manifest_df.itertuples(index=False):
-            x = int(row.tile_x)
-            y = int(row.tile_y)
-            w = int(row.tile_w)
-            h = int(row.tile_h)
-            tile = image.crop((x, y, x + w, y + h))
-            batch_tensors.append(transform(tile))
+    tile_batch: list[Image.Image] = []
+    for row in manifest_df.itertuples(index=False):
+        x = int(row.tile_x)
+        y = int(row.tile_y)
+        w = int(row.tile_w)
+        h = int(row.tile_h)
+        tile_batch.append(image.crop((x, y, x + w, y + h)))
 
-            if len(batch_tensors) == batch_size:
-                batch = torch.stack(batch_tensors, dim=0).to(device)
-                emb = model(batch)
-                outputs.append(emb.detach().cpu().numpy())
-                batch_tensors.clear()
+        if len(tile_batch) == encoder.batch_size:
+            outputs.append(encoder.encode_tiles(tile_batch))
+            tile_batch.clear()
 
-        if batch_tensors:
-            batch = torch.stack(batch_tensors, dim=0).to(device)
-            emb = model(batch)
-            outputs.append(emb.detach().cpu().numpy())
+    if tile_batch:
+        outputs.append(encoder.encode_tiles(tile_batch))
 
     embeddings = np.concatenate(outputs, axis=0).astype(np.float32)
     if embeddings.shape[0] != len(manifest_df):
@@ -253,16 +238,24 @@ def main() -> None:
         "cache_signature": cache_signature,
         "image_sha256": image_hash,
         "tile_manifest_sha256": tile_manifest_hash,
-        "encoder_backend": vit_cfg.get("backend", "timm"),
-        "encoder_model_name": model_name,
-        "encoder_frozen": True,
+        "encoder_id": spec.encoder_id,
+        "encoder_display_name": spec.display_name,
+        "encoder_backend": spec.backend,
+        "encoder_model_name": spec.model_name,
+        "encoder_pretrained": spec.pretrained,
+        "encoder_frozen": spec.frozen,
+        "encoder_input_size": spec.input_size,
+        "encoder_batch_size": spec.batch_size,
+        "encoder_config_normalized": spec.normalized_config(),
         "image_loader_backend": image_meta["backend"],
         "svs_level": image_meta["svs_level"],
         "svs_level_downsample": image_meta["svs_level_downsample"],
         "svs_max_dimension": svs_max_dimension,
         "tile_size_px": tile_size_px,
         "embedding_shape": [int(v) for v in embeddings.shape],
-        "encoder_weight_source": encoder_weight_source,
+        "embedding_dim": int(embeddings.shape[1]),
+        "embedding_dtype": str(embeddings.dtype),
+        "encoder_weight_source": encoder.metadata().get("encoder_weight_source", "pretrained"),
     }
     with cache_meta_path.open("w", encoding="utf-8") as handle:
         json.dump(cache_meta, handle, indent=2, sort_keys=True)

@@ -34,6 +34,8 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--outputs-root", type=Path, default=Path("outputs"), help="Root directory for output artifacts.")
     parser.add_argument("--models-root", type=Path, default=Path("models"), help="Root directory for model artifacts.")
+    parser.add_argument("--embedding-encoder", type=str, default=None, help="Embedding encoder override.")
+    parser.add_argument("--encoder", type=str, default=None, help="Alias for --embedding-encoder.")
     return parser
 
 
@@ -106,11 +108,28 @@ def _run_subprocess_streaming(command: list[str], log_handle: Any) -> int:
     return int(process.wait())
 
 
-def _build_steps(args: argparse.Namespace, paths: dict[str, Path]) -> list[tuple[str, list[str]]]:
+def _build_steps(args: argparse.Namespace, paths: dict[str, Path], selected_encoder: str | None) -> list[tuple[str, list[str]]]:
     python = sys.executable
     tile_probs_csv = paths["tile_maps_dir"] / "tile_probabilities.csv"
     pixel_model = paths["pixel_model_dir"] / "pixel_model.pkl"
     pixel_feature_spec = paths["pixel_model_dir"] / "pixel_feature_spec.json"
+
+    embed_cmd = [
+        python,
+        "scripts/embed_vit.py",
+        "--config",
+        str(args.config),
+        "--image-id",
+        args.image_id,
+        "--input",
+        str(paths["tiles_dir"]),
+        "--raw-dir",
+        str(args.raw_dir),
+        "--output-dir",
+        str(paths["embeddings_dir"]),
+    ]
+    if selected_encoder:
+        embed_cmd.extend(["--embedding-encoder", selected_encoder])
 
     return [
         (
@@ -132,20 +151,7 @@ def _build_steps(args: argparse.Namespace, paths: dict[str, Path]) -> list[tuple
         ),
         (
             "embed_vit",
-            [
-                python,
-                "scripts/embed_vit.py",
-                "--config",
-                str(args.config),
-                "--image-id",
-                args.image_id,
-                "--input",
-                str(paths["tiles_dir"]),
-                "--raw-dir",
-                str(args.raw_dir),
-                "--output-dir",
-                str(paths["embeddings_dir"]),
-            ],
+            embed_cmd,
         ),
         (
             "make_tile_labels",
@@ -332,6 +338,8 @@ def run_pipeline(
 ) -> int:
     """Execute Stage 1 pipeline with readiness gating and persisted run summary."""
     start_ts = _iso_utc_now()
+    selected_encoder = args.embedding_encoder or args.encoder
+    print(f"Embedding encoder: {selected_encoder or 'config default'}. Use a distinct project tag for side-by-side comparisons.")
     start_monotonic = time.monotonic()
     paths = derive_paths(run_tag=args.run_tag, outputs_root=args.outputs_root, models_root=args.models_root)
     reports_dir = paths["reports_dir"]
@@ -360,7 +368,7 @@ def run_pipeline(
                 final_status = "NOT_READY"
                 exit_code = 1
             else:
-                for step_name, command in _build_steps(args, paths):
+                for step_name, command in _build_steps(args, paths, selected_encoder):
                     started = time.monotonic()
                     command_text = shlex.join(command)
                     print(f"\n[step] {step_name}: {command_text}")
@@ -410,6 +418,7 @@ def run_pipeline(
     summary_payload = {
         "image_id": args.image_id,
         "run_tag": args.run_tag,
+        "embedding_encoder": selected_encoder,
         "readiness": readiness,
         "started_at_utc": start_ts,
         "ended_at_utc": end_ts,
@@ -434,6 +443,9 @@ def run_pipeline(
 def main() -> int:
     """CLI entrypoint for one-command Stage 1 execution."""
     args = build_parser().parse_args()
+    if args.embedding_encoder and args.encoder and args.embedding_encoder != args.encoder:
+        raise ValueError("--embedding-encoder and --encoder conflict")
+    selected_encoder = args.embedding_encoder or args.encoder
     return run_pipeline(args)
 
 

@@ -9,7 +9,7 @@ import logging
 from pathlib import Path
 from typing import Any
 
-from encoder_backends import TimmTileEmbeddingEncoder, resolve_encoder_spec
+from encoder_backends import HfTransformersTileEmbeddingEncoder, TimmTileEmbeddingEncoder, resolve_encoder_spec
 
 import numpy as np
 import pandas as pd
@@ -70,6 +70,9 @@ def make_cache_signature(
         "encoder_pretrained": bool(encoder_cfg.get("pretrained", True)),
         "encoder_frozen": bool(encoder_cfg.get("frozen", True)),
         "encoder_input_size": encoder_cfg.get("input_size"),
+        "encoder_pooling": encoder_cfg.get("extra", {}).get("pooling"),
+        "encoder_trust_remote_code": bool(encoder_cfg.get("trust_remote_code", False)),
+        "encoder_requires_hf_auth": bool(encoder_cfg.get("requires_hf_auth", False)),
         "tile_size_px": int(tile_size_px),
     }
     encoded = json.dumps(payload, sort_keys=True).encode("utf-8")
@@ -183,15 +186,18 @@ def main() -> None:
             return
 
     require_pretrained = image_path.suffix.lower() == ".svs"
-    try:
-        encoder = TimmTileEmbeddingEncoder(spec, require_pretrained=require_pretrained)
-    except Exception as exc:
-        if require_pretrained:
-            raise RuntimeError(
-                "Pretrained timm weights are required for real .svs embedding runs. "
-                f"Original error: {exc}"
-            ) from exc
-        raise
+    if spec.backend == "timm":
+        try:
+            encoder = TimmTileEmbeddingEncoder(spec, require_pretrained=require_pretrained)
+        except Exception as exc:
+            if require_pretrained:
+                raise RuntimeError(
+                    "Pretrained timm weights are required for real .svs embedding runs. "
+                    f"Original error: {exc}"
+                ) from exc
+            raise
+    else:
+        encoder = HfTransformersTileEmbeddingEncoder(spec)
     expected_dims: tuple[int, int] | None = None
     if image_path.suffix.lower() == ".svs":
         width = int((manifest_df["tile_x"] + manifest_df["tile_w"]).max())
@@ -257,6 +263,7 @@ def main() -> None:
         "embedding_dtype": str(embeddings.dtype),
         "encoder_weight_source": encoder.metadata().get("encoder_weight_source", "pretrained"),
     }
+    cache_meta.update(encoder.metadata())
     with cache_meta_path.open("w", encoding="utf-8") as handle:
         json.dump(cache_meta, handle, indent=2, sort_keys=True)
         handle.write("\n")

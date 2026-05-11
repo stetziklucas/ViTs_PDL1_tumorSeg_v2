@@ -37,6 +37,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--annotations-dir", type=Path, default=Path("data/annotations"), help="Annotation root directory.")
     parser.add_argument("--outputs-root", type=Path, default=Path("outputs"), help="Outputs root directory.")
     parser.add_argument("--models-root", type=Path, default=Path("models"), help="Models root directory.")
+    parser.add_argument("--embedding-encoder", type=str, default=None, help="Embedding encoder override.")
+    parser.add_argument("--encoder", type=str, default=None, help="Alias for --embedding-encoder.")
     parser.add_argument(
         "--allow-skip-not-ready",
         action="store_true",
@@ -192,8 +194,12 @@ def _write_summary_json_md(report_dir: Path, payload: dict[str, Any]) -> tuple[P
 
 def main() -> int:
     args = build_parser().parse_args()
+    if args.embedding_encoder and args.encoder and args.embedding_encoder != args.encoder:
+        raise ValueError("--embedding-encoder and --encoder conflict")
+    selected_encoder = args.embedding_encoder or args.encoder
     _ = load_config(args.config)
     start_ts = _iso_utc_now()
+    print(f"Embedding encoder: {selected_encoder or 'config default'}. Use a distinct project tag for side-by-side comparisons.")
     start_t = time.monotonic()
 
     requested_cases: list[dict[str, str]] = []
@@ -272,7 +278,7 @@ def main() -> int:
                         ),
                         (
                             f"{case['alias']}:embed_vit",
-                            [
+                            ([
                                 python,
                                 "scripts/embed_vit.py",
                                 "--config",
@@ -285,7 +291,7 @@ def main() -> int:
                                 str(args.raw_dir),
                                 "--output-dir",
                                 str(paths["embeddings_dir"]),
-                            ],
+                            ] + (["--embedding-encoder", selected_encoder] if selected_encoder else [])),
                         ),
                         (
                             f"{case['alias']}:make_tile_labels",
@@ -518,6 +524,7 @@ def main() -> int:
     cases_manifest_payload = discovery_summary or {}
     cases_manifest_payload.update({
         "project_tag": args.project_tag,
+        "embedding_encoder": selected_encoder,
         "requested_cases": requested_cases,
         "included_ready_cases": included_with_tags,
         "skipped_cases": skipped_cases if skipped_cases else cases_manifest_payload.get("skipped_cases", []),
@@ -533,6 +540,7 @@ def main() -> int:
 
     payload = {
         "project_tag": args.project_tag,
+        "embedding_encoder": selected_encoder,
         "requested_cases": requested_cases,
         "readiness": readiness_rows,
         "included_cases": included_cases,

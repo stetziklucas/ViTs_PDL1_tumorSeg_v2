@@ -21,7 +21,7 @@ def _from_dict(encoder_id: str, cfg: dict[str, Any]) -> EncoderSpec:
         embedding_format=str(cfg.get("embedding_format", "npy")),
         trust_remote_code=bool(cfg.get("trust_remote_code", False)),
         requires_hf_auth=bool(cfg.get("requires_hf_auth", False)),
-        extra=dict(cfg.get("extra", {})),
+        extra={**dict(cfg.get("extra", {})), "pooling": cfg.get("pooling", "auto")},
     )
     if not spec.frozen:
         raise ValueError(f"Stage 1 requires frozen encoders; got frozen=false for encoder_id='{encoder_id}'.")
@@ -46,7 +46,7 @@ def resolve_encoder_spec(config: dict[str, Any], cli_encoder_id: str | None = No
         available = ", ".join(sorted(registry.keys()))
         raise ValueError(f"Unknown embedding encoder_id '{selected}'. Available encoder IDs: {available}")
     spec = registry[selected]
-    if spec.backend != "timm":
+    if spec.backend not in {"timm", "hf_transformers"}:
         raise ValueError(f"Unknown embedding backend '{spec.backend}' for encoder_id '{spec.encoder_id}'.")
     return spec
 

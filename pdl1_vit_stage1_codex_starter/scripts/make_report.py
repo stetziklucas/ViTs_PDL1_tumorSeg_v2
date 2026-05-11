@@ -259,6 +259,7 @@ def write_report_summary_markdown(output_path: Path, payload: dict[str, Any]) ->
         f"model_scope: {payload.get('model_scope', 'single_image_model')}",
         f"shared_model_tag: {payload.get('shared_model_tag') or 'n/a'}",
         f"training_image_count: {payload.get('training_image_count') if payload.get('training_image_count') is not None else 'n/a'}",
+        f"encoder: {((payload.get('encoder_provenance') or {}).get('encoder_id') or 'n/a')} | backend: {((payload.get('encoder_provenance') or {}).get('encoder_backend') or 'n/a')} | dim: {((payload.get('encoder_provenance') or {}).get('embedding_dim') or 'n/a')}",
         f"included_training_aliases: {', '.join(payload.get('included_training_aliases', [])) if payload.get('included_training_aliases') else 'n/a'}",
         "",
         "## Operator-facing summary",
@@ -438,6 +439,9 @@ def main() -> None:
     optional_inputs = optional_artifacts(args)
     tile_cv_metrics = load_json(optional_inputs["tile_cv_metrics"]) if optional_inputs["tile_cv_metrics"] else None
 
+
+    if tile_cv_metrics is not None and isinstance(tile_cv_metrics.get("encoder_provenance"), dict):
+        payload["encoder_provenance"] = tile_cv_metrics.get("encoder_provenance")
     annotation_meta_path = args.annotations_dir / f"{args.image_id}_annotation_meta.json"
     if not annotation_meta_path.exists():
         raise FileNotFoundError(f"Missing annotation metadata for supervision audit: {annotation_meta_path}")
@@ -504,6 +508,9 @@ def main() -> None:
             "scribble_labels": scribble_path.as_posix(),
         },
     }
+
+    if tile_cv_metrics is not None and isinstance(tile_cv_metrics.get("encoder_provenance"), dict):
+        payload["encoder_provenance"] = tile_cv_metrics.get("encoder_provenance")
     annotation_meta_path = args.annotations_dir / f"{args.image_id}_annotation_meta.json"
     verification_meta = {"verification_overlay_available": False}
     try:

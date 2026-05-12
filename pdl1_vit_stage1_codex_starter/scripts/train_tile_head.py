@@ -19,6 +19,27 @@ from sklearn.model_selection import GroupKFold
 
 LABEL_MAP = {"Negative_Context": 0, "Positive_Context": 1}
 
+ENCODER_PROVENANCE_KEYS = [
+    "encoder_id",
+    "encoder_display_name",
+    "encoder_backend",
+    "encoder_model_name",
+    "encoder_pooling",
+    "embedding_dim",
+    "embedding_dtype",
+    "encoder_weight_source",
+    "encoder_trust_remote_code",
+    "encoder_requires_hf_auth",
+]
+
+ENCODER_CONSISTENCY_KEYS = [
+    "encoder_id",
+    "encoder_backend",
+    "encoder_model_name",
+    "encoder_pooling",
+    "embedding_dim",
+]
+
 
 def build_parser() -> argparse.ArgumentParser:
     """Build CLI parser for tile-head training."""
@@ -130,9 +151,6 @@ def _validate_cache_meta(cache_meta_path: Path, *, allow_nonpretrained_embedding
 
 
 def _resolve_cases(args: argparse.Namespace) -> list[dict[str, Any]]:
-    if encoder_provenance is not None:
-        summary["encoder_provenance"] = encoder_provenance
-
     if args.cohort_file is None:
         return [
             {
@@ -169,6 +187,54 @@ def _resolve_cases(args: argparse.Namespace) -> list[dict[str, Any]]:
             }
         )
     return cases
+
+
+
+
+def _read_encoder_provenance(embeddings_dir: Path) -> dict[str, Any] | None:
+    meta_path = embeddings_dir / "embeddings_cache_meta.json"
+    if not meta_path.exists():
+        return None
+    cache_meta = json.loads(meta_path.read_text(encoding="utf-8"))
+    return {key: cache_meta.get(key) for key in ENCODER_PROVENANCE_KEYS if cache_meta.get(key) is not None}
+
+
+def _case_provenance_key(case: dict[str, Any], provenance: dict[str, Any] | None) -> str:
+    alias = case.get("alias")
+    if alias:
+        return str(alias)
+    if provenance is not None and provenance.get("image_id"):
+        return str(provenance["image_id"])
+    image_id = case.get("image_id")
+    if image_id:
+        return str(image_id)
+    return str(case.get("embeddings_dir"))
+
+
+def _collect_encoder_provenance(cases: list[dict[str, Any]]) -> tuple[dict[str, Any] | None, dict[str, dict[str, Any]]]:
+    non_null: list[dict[str, Any]] = []
+    per_case: dict[str, dict[str, Any]] = {}
+
+    for case in cases:
+        provenance = _read_encoder_provenance(Path(case["embeddings_dir"]))
+        if provenance is None:
+            continue
+        per_case[_case_provenance_key(case, provenance)] = provenance
+        non_null.append(provenance)
+
+    if not non_null:
+        return None, {}
+
+    baseline = {k: non_null[0].get(k) for k in ENCODER_CONSISTENCY_KEYS}
+    for provenance in non_null[1:]:
+        candidate = {k: provenance.get(k) for k in ENCODER_CONSISTENCY_KEYS}
+        if candidate != baseline:
+            raise ValueError(
+                "Mixed encoder provenance detected across cohort cases; "
+                f"inconsistent encoder fields {ENCODER_CONSISTENCY_KEYS}."
+            )
+
+    return non_null[0], per_case
 
 
 def _load_case_rows(case: dict[str, Any], args: argparse.Namespace) -> pd.DataFrame:
@@ -367,11 +433,7 @@ def main() -> None:
 
     training_metrics = metric_bundle(y, usable["prob_positive"].to_numpy(dtype=float), threshold=threshold)
 
-    encoder_meta_path = args.embeddings_dir / "embeddings_cache_meta.json"
-    encoder_provenance = None
-    if encoder_meta_path.exists():
-        cache_meta = json.loads(encoder_meta_path.read_text(encoding="utf-8"))
-        encoder_provenance = {k: cache_meta.get(k) for k in ["encoder_id","encoder_display_name","encoder_backend","encoder_model_name","encoder_pooling","embedding_dim","embedding_dtype","encoder_weight_source","encoder_trust_remote_code","encoder_requires_hf_auth"]}
+    encoder_provenance, per_case_encoder_provenance = _collect_encoder_provenance(cases)
 
     summary = {
         "model_type": "logistic_regression",
@@ -405,6 +467,9 @@ def main() -> None:
 
     if encoder_provenance is not None:
         summary["encoder_provenance"] = encoder_provenance
+
+    if per_case_encoder_provenance:
+        summary["per_case_encoder_provenance"] = per_case_encoder_provenance
 
     if args.cohort_file is None:
         summary["artifacts"]["probability_manifest_path"] = str(args.probs_manifest.as_posix())

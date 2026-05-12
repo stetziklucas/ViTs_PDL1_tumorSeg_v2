@@ -50,7 +50,7 @@ def discover_project_summaries(outputs_root: Path=Path('outputs'), current_image
                     if alias:
                         current=(outputs_root/f'reports_{tag}__{alias}'/'report_summary.md').as_posix()
         agg=js.get('aggregate_metrics',{}) if isinstance(js.get('aggregate_metrics'),dict) else {}
-        rows.append({'project_tag':tag,'timestamp_utc':_best_ts(js,run,d/'training_summary.json'),'included_ready_case_count':len(included),'skipped_case_count':len(skipped),'aggregate_precision':agg.get('precision'),'aggregate_sensitivity':agg.get('sensitivity'),'aggregate_f1':agg.get('f1'),'training_summary_md':(d/'training_summary.md').as_posix(),'training_summary_json':(d/'training_summary.json').as_posix(),'current_image_included':cur_inc,'current_image_child_report_md':current})
+        rows.append({'project_tag':tag,'timestamp_utc':_best_ts(js,run,d/'training_summary.json'),'included_ready_case_count':len(included),'skipped_case_count':len(skipped),'aggregate_precision':agg.get('precision'),'aggregate_sensitivity':agg.get('sensitivity'),'aggregate_f1':agg.get('f1'),'training_summary_md':(d/'training_summary.md').as_posix(),'training_summary_json':(d/'training_summary.json').as_posix(),'current_image_included':cur_inc,'current_image_child_report_md':current,'encoder_provenance':js.get('encoder_provenance')})
     return sorted(rows,key=lambda r:(_parse_ts(r.get('timestamp_utc')),str(r.get('project_tag'))), reverse=True)
 
 def discover_current_image_shared_reports(image_id: str, outputs_root: Path=Path('outputs'))->list[dict[str,Any]]:
@@ -101,19 +101,23 @@ def discover_current_image_shared_reports(image_id: str, outputs_root: Path=Path
             'verification_regions_available': bool(js.get('verification_regions_available')) ,
             'verification_regions_path': js.get('verification_regions_path'),
             'verification_region_count': int(js.get('verification_region_count') or 0),
-            'verification_regions_warning': js.get('verification_regions_warning'),
+            'verification_regions_warning': js.get('verification_regions_warning'),'encoder_provenance':js.get('encoder_provenance'),
         })
     return sorted(rows,key=lambda r:(_parse_ts(r.get('timestamp_utc')),str(r.get('project_tag'))), reverse=True)
 
 def format_project_summary_label(entry: dict[str,Any])->str:
     ts=_parse_ts(entry.get('timestamp_utc')).strftime('%Y-%m-%d %H:%M')
     f1t=f"agg F1 {format_display_float(entry.get('aggregate_f1'))}"
-    return f"{ts} | {entry.get('project_tag','unknown')} | {f1t}"
+    enc=(entry.get('encoder_provenance') or {})
+    enc_label=enc.get('encoder_display_name') or enc.get('encoder_id') or 'encoder n/a'
+    return f"{entry.get('project_tag','unknown')} | {enc_label} | {f1t}"
 
 def format_current_image_report_label(entry: dict[str,Any])->str:
     ts=_parse_ts(entry.get('timestamp_utc')).strftime('%Y-%m-%d %H:%M')
     f1t=f"shared F1 {format_display_float(entry.get('f1'))}"
-    return f"{ts} | {entry.get('project_tag','unknown')} | {f1t}"
+    enc=(entry.get('encoder_provenance') or {})
+    enc_label=enc.get('encoder_display_name') or enc.get('encoder_id') or 'encoder n/a'
+    return f"{entry.get('project_tag','unknown')} | {enc_label} | {f1t}"
 
 def auto_select_latest_indices(project_entries:list[dict[str,Any]], image_entries:list[dict[str,Any]])->tuple[int|None,int|None]:
     return (0 if project_entries else None, 0 if image_entries else None)

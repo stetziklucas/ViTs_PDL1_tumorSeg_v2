@@ -4,12 +4,102 @@ from __future__ import annotations
 
 import tempfile
 import unittest
+import json
 from pathlib import Path
+from types import SimpleNamespace
+from unittest.mock import patch
 
+from scripts import make_report
 from scripts.make_report import derive_operator_summary, write_report_summary_markdown
 
 
 class MakeReportTests(unittest.TestCase):
+    def _run_main_smoke(self, with_encoder_provenance: bool) -> tuple[dict, str]:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            annotations_dir = root / "annotations"
+            scribbles_dir = annotations_dir / "scribbles"
+            reports_dir = root / "reports"
+            overlays_dir = root / "overlays"
+            maps_dir = root / "maps"
+            masks_dir = root / "masks"
+            tile_model_dir = root / "tile_model"
+            for d in (scribbles_dir, reports_dir, overlays_dir, maps_dir, masks_dir, tile_model_dir):
+                d.mkdir(parents=True, exist_ok=True)
+
+            (scribbles_dir / "IMG_scribble_labels.png").write_bytes(b"x")
+            (annotations_dir / "IMG_annotation_meta.json").write_text("{}", encoding="utf-8")
+            run_tag = "smoke"
+            tiles_dir = root / f"tiles_{run_tag}"
+            tiles_dir.mkdir(parents=True, exist_ok=True)
+            (tiles_dir / "tile_labels.csv").write_text("image_id,tile_id,label\n", encoding="utf-8")
+
+            args = SimpleNamespace(
+                config=root / "base.yaml",
+                image_id="IMG",
+                annotations_dir=annotations_dir,
+                maps_dir=maps_dir,
+                tile_maps_dir=None,
+                pixel_maps_dir=None,
+                masks_dir=masks_dir,
+                overlays_dir=overlays_dir,
+                reports_dir=reports_dir,
+                tile_model_dir=tile_model_dir,
+                model_scope="single_image_model",
+                shared_model_tag=None,
+                training_image_count=None,
+                included_training_aliases=None,
+            )
+
+            metrics_payload = {"image_id": "IMG", "output_space_note": "note"}
+            tile_cv_payload = (
+                {
+                    "encoder_provenance": {
+                        "encoder_id": "current_timm",
+                        "encoder_display_name": "Current ViT baseline",
+                        "encoder_backend": "timm",
+                        "encoder_model_name": "vit_base_patch16_224",
+                        "embedding_dim": 768,
+                        "embedding_dtype": "float32",
+                        "encoder_weight_source": "pretrained",
+                    }
+                }
+                if with_encoder_provenance
+                else {}
+            )
+
+            with patch.object(make_report, "build_parser") as parser_mock, patch.object(
+                make_report, "load_config", return_value={"classes": {"label_encoding": {"Positive_Tumor": 1, "Negative_Tumor": 2, "NonTumor": 3}}}
+            ), patch.object(
+                make_report, "require_artifacts",
+                return_value={
+                    "metrics": reports_dir / "metrics.json",
+                    "overlay": overlays_dir / "overlay.png",
+                    "positive_mask": masks_dir / "positive_mask.png",
+                    "pixel_prob_map": maps_dir / "pixel_prob_map.png",
+                    "tile_prob_map": maps_dir / "tile_prob_map.png",
+                },
+            ), patch.object(
+                make_report, "optional_artifacts", return_value={"tile_cv_metrics": tile_model_dir / "tile_cv_metrics.json"}
+            ), patch.object(
+                make_report, "_derive_run_tag", return_value=run_tag
+            ), patch.object(
+                make_report, "compute_metrics_from_paths",
+                return_value={"false_positive_px": 0, "false_negative_px": 0, "precision": 1.0, "sensitivity": 1.0, "f1": 1.0, "training_log_loss_total": 0.0, "training_log_loss_mean": 0.0, "tp_px": 1, "tn_px": 1, "annotated_positive_px": 1, "annotated_negative_px": 1, "annotated_total_px": 2, "class_metrics": {"Positive_Tumor": {"annotated_px": 1, "tp_px": 1, "fn_px": 0, "sensitivity": 1.0}, "Negative_Tumor": {"annotated_px": 1, "tn_px": 1, "fp_px": 0, "specificity": 1.0}, "NonTumor": {"annotated_px": 0, "tn_px": 0, "fp_px": 0, "specificity": 1.0}}},
+            ), patch.object(
+                make_report, "audit_supervision",
+                return_value={"warnings": [], "polygon_counts": {}, "annotated_pixel_counts": {}, "accepted_tile_count": 0, "usable_tile_count": 0, "ignored_tile_count": 0, "ignored_tile_share": 0.0, "tile_label_counts": {}, "tile_label_reason_counts": {}, "ignored_tile_reasons": {}, "selection_source_counts": {}},
+            ), patch.object(
+                make_report, "generate_verification_overlay", return_value={"verification_overlay_available": False}
+            ), patch.object(make_report, "render_pdf", return_value=None), patch.object(make_report, "load_json") as load_json_mock:
+                parser_mock.return_value.parse_args.return_value = args
+                load_json_mock.side_effect = [metrics_payload, tile_cv_payload]
+                make_report.main()
+
+            summary_json = json.loads((reports_dir / "report_summary.json").read_text(encoding="utf-8"))
+            summary_md = (reports_dir / "report_summary.md").read_text(encoding="utf-8")
+            return summary_json, summary_md
+
     def test_operator_summary_derivation_is_deterministic(self) -> None:
         conservative = derive_operator_summary({"false_positive_px": 0, "false_negative_px": 7})
         self.assertEqual(conservative["error_pattern"], "Conservative / false-negative dominant")
@@ -128,6 +218,18 @@ class MakeReportTests(unittest.TestCase):
             write_report_summary_markdown(path, payload)
             text = path.read_text(encoding="utf-8")
             self.assertIn("encoder: hibou_b", text)
+
+    def test_make_report_main_with_encoder_provenance_writes_summary(self) -> None:
+        payload, markdown = self._run_main_smoke(with_encoder_provenance=True)
+        self.assertEqual(payload["encoder_provenance"]["encoder_id"], "current_timm")
+        self.assertIn("encoder: current_timm", markdown)
+        self.assertIn("backend: timm", markdown)
+        self.assertIn("dim: 768", markdown)
+
+    def test_make_report_main_without_encoder_provenance_still_succeeds(self) -> None:
+        payload, markdown = self._run_main_smoke(with_encoder_provenance=False)
+        self.assertNotIn("encoder_provenance", payload)
+        self.assertIn("encoder: n/a", markdown)
 
 if __name__ == "__main__":
     unittest.main()

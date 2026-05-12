@@ -363,3 +363,15 @@ python scripts/check_embedding_encoder_env.py --embedding-encoder hibou_b --try-
 - `hibou_b` can be selected from the GUI when Hugging Face access is configured on the VM.
 - Project summaries, single-image shared reports, history labels, and encoder comparison summaries now expose encoder provenance more clearly.
 - Metrics remain annotated-region development metrics only; they are not whole-slide validation and not clinical validation.
+
+
+## Encoder benchmark delta diagnostics (PR4)
+
+- `scripts/compare_encoder_runs.py` now compares more than aggregate metrics and keeps the existing pairwise CLI/output filenames.
+- The comparison verifies encoder provenance plus per-image cache signatures and tile-manifest hashes.
+- It summarizes per-image tile probability deltas (including threshold flip counts) and writes CSV deltas.
+- It summarizes decoded pixel-probability-map deltas and writes absolute-delta PNGs.
+- It summarizes final positive-mask deltas (XOR pixels, Dice, Jaccard) and writes XOR PNGs.
+- Identical final masks can be expected when continuous values change but do not cross existing tile/pixel/fusion thresholds.
+- Metrics remain annotated-region development metrics only (not whole-slide/clinical validation).
+- Output JSON now includes a future-friendly benchmark schema (`benchmark_schema_version`, `runs`, `comparisons`) so later GUI multi-encoder selection can reuse this contract.

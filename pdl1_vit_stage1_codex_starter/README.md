@@ -355,3 +355,11 @@ Verification review UX: GUI review now renders two aligned layers for annotated-
 ```bash
 python scripts/check_embedding_encoder_env.py --embedding-encoder hibou_b --try-load
 ```
+
+## Embedding encoder benchmarking (PR3)
+
+- The Stage 1 Workflow GUI now includes an **Embedding encoder** dropdown sourced from `config/base.yaml`.
+- `current_timm` remains the default encoder.
+- `hibou_b` can be selected from the GUI when Hugging Face access is configured on the VM.
+- Project summaries, single-image shared reports, history labels, and encoder comparison summaries now expose encoder provenance more clearly.
+- Metrics remain annotated-region development metrics only; they are not whole-slide validation and not clinical validation.

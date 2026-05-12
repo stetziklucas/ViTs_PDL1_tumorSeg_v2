@@ -515,13 +515,13 @@ def build_stage1_run_command(
 
 
 
-def default_project_tag(now: datetime | None = None) -> str:
+def default_project_tag(embedding_encoder_id: str = "current_timm", now: datetime | None = None) -> str:
     stamp = (now or datetime.now(timezone.utc)).strftime("%Y%m%d_%H%M%S")
-    return f"training_{stamp}"
+    return f"training_{stamp}__{embedding_encoder_id}"
 
 
-def build_stage1_project_command(*, config_path: Path, project_tag: str, raw_dir: Path, annotations_dir: Path, outputs_root: Path, models_root: Path) -> list[str]:
-    return [sys.executable, "scripts/run_stage1_project.py", "--config", str(config_path), "--project-tag", project_tag, "--discover-ready-cases", "--allow-skip-not-ready", "--raw-dir", str(raw_dir), "--annotations-dir", str(annotations_dir), "--outputs-root", str(outputs_root), "--models-root", str(models_root)]
+def build_stage1_project_command(*, config_path: Path, project_tag: str, raw_dir: Path, annotations_dir: Path, outputs_root: Path, models_root: Path, embedding_encoder_id: str = "current_timm") -> list[str]:
+    return [sys.executable, "scripts/run_stage1_project.py", "--config", str(config_path), "--project-tag", project_tag, "--discover-ready-cases", "--allow-skip-not-ready", "--embedding-encoder", embedding_encoder_id, "--raw-dir", str(raw_dir), "--annotations-dir", str(annotations_dir), "--outputs-root", str(outputs_root), "--models-root", str(models_root)]
 
 
 def resolve_current_image_shared_report(*, outputs_root: Path, project_tag: str, image_id: str) -> Path | None:
@@ -817,6 +817,20 @@ def launch_napari_app(
     project_counts = QLabel("READY case count: 0 | skipped case count: 0")
     project_details = QLabel("Current image included = false")
     preview_path_label = QLabel("Currently loaded preview path: none")
+    encoder_cfg = config.get("embedding_encoder", {}) if isinstance(config.get("embedding_encoder", {}), dict) else {}
+    encoder_registry = encoder_cfg.get("registry", {}) if isinstance(encoder_cfg.get("registry", {}), dict) else {}
+    if not encoder_registry:
+        encoder_registry = {"current_timm": {"display_name": "Current ViT baseline", "backend": "timm", "model_name": "vit_base_patch16_224"}}
+    default_encoder_id = str(encoder_cfg.get("selected") or "current_timm")
+    if default_encoder_id not in encoder_registry:
+        default_encoder_id = next(iter(encoder_registry.keys()))
+    encoder_combo = QComboBox()
+    for enc_id, meta in encoder_registry.items():
+        display = str(meta.get("display_name") or enc_id)
+        encoder_combo.addItem(f"{display} ({enc_id})", enc_id)
+    encoder_hint = QLabel("Embedding encoder: n/a")
+    encoder_note = QLabel("")
+    encoder_note.setWordWrap(True)
     project_combo = QComboBox(); image_combo = QComboBox()
     run_btn = QPushButton("Train model and run verification")
     show_log_toggle = QCheckBox("Show runner log"); show_log_toggle.setChecked(True)
@@ -834,7 +848,7 @@ def launch_napari_app(
     preview_box.setLineWrapMode(QTextEdit.WidgetWidth); preview_box.setMinimumWidth(0); preview_box.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
     project_log.setLineWrapMode(QPlainTextEdit.WidgetWidth); project_log.setMinimumWidth(0); project_log.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.MinimumExpanding)
     splitter = QSplitter(); splitter.setOrientation(qt_orientation(Qt, "Vertical")); splitter.addWidget(preview_box); splitter.addWidget(project_log); splitter.setStretchFactor(0,5); splitter.setStretchFactor(1,1); splitter.setChildrenCollapsible(True); splitter.setCollapsible(0, True); splitter.setCollapsible(1, True); splitter.setMinimumWidth(0); splitter.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-    for w in (run_btn, open_verification_viewer_btn, show_log_toggle, show_verification_toggle, QLabel('Project summaries'), project_combo, QLabel('Current image shared reports'), image_combo, workflow_status, latest_project_tag, selected_project_tag, selected_image_tag, project_counts, project_details, verification_status, preview_path_label, splitter): workflow_layout.addWidget(w)
+    for w in (QLabel('Embedding encoder:'), encoder_combo, encoder_hint, encoder_note, run_btn, open_verification_viewer_btn, show_log_toggle, show_verification_toggle, QLabel('Project summaries'), project_combo, QLabel('Current image shared reports'), image_combo, workflow_status, latest_project_tag, selected_project_tag, selected_image_tag, project_counts, project_details, verification_status, preview_path_label, splitter): workflow_layout.addWidget(w)
     viewer.window.add_dock_widget(workflow_panel, area='right', name='Stage 1 Workflow')
 
     project_runner = QProcess(viewer.window.qt_viewer); project_runner.setProcessChannelMode(QProcess.MergedChannels)
@@ -929,6 +943,29 @@ def launch_napari_app(
         viewer.layers.move(viewer.layers.index(verification_layer_name), len(viewer.layers) - 1)
         _apply_polygon_review_style(True)
         verification_status.setText(f"Verification review loaded for {entry.get('project_tag')}: positive=red, negative=gold, nontumor=green, ignore=gray")
+
+
+    def _selected_encoder_id() -> str:
+        return str(encoder_combo.currentData() or default_encoder_id)
+
+    def _selected_encoder_meta() -> dict[str, Any]:
+        return encoder_registry.get(_selected_encoder_id(), {}) if isinstance(encoder_registry, dict) else {}
+
+    def _refresh_encoder_hint() -> None:
+        enc_id = _selected_encoder_id()
+        meta = _selected_encoder_meta()
+        display = str(meta.get("display_name") or enc_id)
+        backend = str(meta.get("backend") or "n/a")
+        model = str(meta.get("model_name") or "n/a")
+        trust = bool(meta.get("trust_remote_code"))
+        if enc_id == "hibou_b":
+            encoder_hint.setText(f"{display}: {model}; requires Hugging Face access; trust_remote_code={trust}")
+        else:
+            encoder_hint.setText(f"{display}: {backend} / {model}")
+        if bool(meta.get("requires_hf_auth")):
+            encoder_note.setText("Requires accepted Hugging Face model access and VM login. Run scripts/check_embedding_encoder_env.py if loading fails.")
+        else:
+            encoder_note.setText("")
 
     def _refresh_workflow(select_tag: str|None=None)->None:
         summary = discover_project_cases(config=config, annotations_dir=gui_annotations_dir, raw_dir=gui_raw_dir)
@@ -1069,8 +1106,11 @@ def launch_napari_app(
         if len(summary.get('included_ready_cases',[])) < 2:
             workflow_status.setText('Project status: blocked; please save annotations so at least 2 cases are READY.')
             return
-        tag=default_project_tag(); latest_project_tag.setText(f'Latest generated/shared project tag: {tag}')
-        cmd=build_stage1_project_command(config_path=Path(config.get('__config_path__','config/base.yaml')),project_tag=tag,raw_dir=gui_raw_dir,annotations_dir=gui_annotations_dir,outputs_root=gui_outputs_root,models_root=gui_models_root)
+        enc_id=_selected_encoder_id(); enc_meta=_selected_encoder_meta(); enc_display=str(enc_meta.get("display_name") or enc_id)
+        tag=default_project_tag(enc_id); latest_project_tag.setText(f'Latest generated/shared project tag: {tag}')
+        cmd=build_stage1_project_command(config_path=Path(config.get('__config_path__','config/base.yaml')),project_tag=tag,raw_dir=gui_raw_dir,annotations_dir=gui_annotations_dir,outputs_root=gui_outputs_root,models_root=gui_models_root,embedding_encoder_id=enc_id)
+        workflow_status.setText(f"Project status: queued. Embedding encoder: {enc_display} ({enc_id})")
+        project_log.appendPlainText(f"Embedding encoder: {enc_display} ({enc_id})")
         project_log.appendPlainText(f"$ {shlex.join(cmd)}")
         project_runner.setProgram(cmd[0]); project_runner.setArguments(cmd[1:]); project_runner.setWorkingDirectory(str(REPO_ROOT)); project_runner.start()
 
@@ -1092,7 +1132,10 @@ def launch_napari_app(
     def _on_verification_toggle(_:bool)->None: _sync_verification_overlay()
 
     project_runner.readyReadStandardOutput.connect(_append_output); project_runner.started.connect(_started); project_runner.finished.connect(_finished)
+    encoder_combo.currentIndexChanged.connect(lambda *_: _refresh_encoder_hint())
     run_btn.clicked.connect(_run_project); open_verification_viewer_btn.clicked.connect(_open_verification_results_viewer); project_combo.currentIndexChanged.connect(_on_project_changed); image_combo.currentIndexChanged.connect(_on_image_changed); show_log_toggle.toggled.connect(_on_toggle); show_verification_toggle.toggled.connect(_on_verification_toggle)
+    encoder_combo.setCurrentIndex(max(0, encoder_combo.findData(default_encoder_id)))
+    _refresh_encoder_hint()
     _refresh_workflow()
     save_state = {"in_progress": False}
 

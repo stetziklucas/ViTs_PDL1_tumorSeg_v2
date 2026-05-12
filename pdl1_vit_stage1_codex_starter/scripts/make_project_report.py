@@ -226,6 +226,30 @@ def evaluate_run_tag(run_tag: str, annotations_dir: Path, label_encoding: dict[s
     }, None
 
 
+
+
+def _encoder_consensus(included: list[dict[str, Any]]) -> tuple[dict[str, Any] | None, dict[str, Any], dict[str, Any]]:
+    per_run = {}
+    encs = []
+    missing = 0
+    for row in included:
+        ep = row.get("encoder_provenance") if isinstance(row.get("encoder_provenance"), dict) else None
+        if ep:
+            per_run[row.get("run_tag", "unknown")] = ep
+            encs.append(ep.get("encoder_id"))
+        else:
+            missing += 1
+    unique = sorted({e for e in encs if e})
+    cons = {"consistent": len(unique) <= 1, "encoder_ids": unique, "warning": None}
+    if missing:
+        cons["warning"] = f"{missing} run(s) missing encoder provenance"
+    if len(unique) > 1:
+        cons["warning"] = "mixed encoder provenance detected across included runs"
+    top = None
+    if cons["consistent"] and per_run:
+        top = next(iter(per_run.values()))
+    return top, per_run, cons
+
 def build_training_summary_markdown(payload: dict[str, Any]) -> str:
     """Render plain markdown summary for CRD/editor consumption."""
     a = payload["aggregate_metrics"]
@@ -235,6 +259,12 @@ def build_training_summary_markdown(payload: dict[str, Any]) -> str:
         "",
         "Note: Metrics are computed on annotated training regions only (scribble labels),",
         "not on whole-slide unlabeled validation regions. Ignore/Unlabeled pixels are excluded.",
+        "",
+        f"Embedding encoder: {((payload.get('encoder_provenance') or {}).get('encoder_display_name') or ((payload.get('encoder_provenance') or {}).get('encoder_id') or "not recorded"))} ({((payload.get('encoder_provenance') or {}).get('encoder_id') or "n/a")})",
+        f"Embedding backend: {((payload.get('encoder_provenance') or {}).get('encoder_backend') or "n/a")}",
+        f"Embedding model: {((payload.get('encoder_provenance') or {}).get('encoder_model_name') or "n/a")}",
+        f"Embedding pooling: {((payload.get('encoder_provenance') or {}).get('encoder_pooling') or "n/a")}",
+        f"Embedding dimension: {((payload.get('encoder_provenance') or {}).get('embedding_dim') or "n/a")}",
         "",
         "## Aggregate project summary",
         "",
@@ -322,6 +352,7 @@ def main() -> None:
         for row in included
         if row.get("warnings")
     ]
+    encoder_prov, per_run_encoder_provenance, encoder_consistency = _encoder_consensus(included)
     payload = {
         "run_tags_requested": args.run_tags,
         "included_runs": included,
@@ -329,6 +360,9 @@ def main() -> None:
         "aggregate_metrics": aggregate,
         "aggregate_class_metrics": class_aggregate,
         "images_needing_attention": attention,
+        "encoder_provenance": encoder_prov,
+        "per_run_encoder_provenance": per_run_encoder_provenance,
+        "encoder_consistency": encoder_consistency,
     }
 
     args.output_dir.mkdir(parents=True, exist_ok=True)

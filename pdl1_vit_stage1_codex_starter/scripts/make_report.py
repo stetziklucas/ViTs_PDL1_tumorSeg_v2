@@ -440,8 +440,6 @@ def main() -> None:
     tile_cv_metrics = load_json(optional_inputs["tile_cv_metrics"]) if optional_inputs["tile_cv_metrics"] else None
 
 
-    if tile_cv_metrics is not None and isinstance(tile_cv_metrics.get("encoder_provenance"), dict):
-        payload["encoder_provenance"] = tile_cv_metrics.get("encoder_provenance")
     annotation_meta_path = args.annotations_dir / f"{args.image_id}_annotation_meta.json"
     if not annotation_meta_path.exists():
         raise FileNotFoundError(f"Missing annotation metadata for supervision audit: {annotation_meta_path}")

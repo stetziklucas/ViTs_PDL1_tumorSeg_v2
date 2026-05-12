@@ -217,19 +217,19 @@ class MakeReportTests(unittest.TestCase):
             payload = {"image_id":"I","run_tag":"r","model_scope":"single_image_model","shared_model_tag":None,"training_image_count":None,"included_training_aliases":[],"result_description":"x","evaluation_scope":"x","error_pattern":"x","next_review_focus":"x","working_space_note":"x","development_metrics":{"false_positive_px":0,"false_negative_px":0,"precision":1.0,"sensitivity":1.0,"f1":1.0,"training_log_loss_total":0.1,"training_log_loss_mean":0.1,"tp_px":1,"tn_px":1,"annotated_positive_px":1,"annotated_negative_px":1,"annotated_total_px":2},"class_metrics":{"Positive_Tumor":{"annotated_px":1,"tp_px":1,"fn_px":0,"sensitivity":1.0},"Negative_Tumor":{"annotated_px":1,"tn_px":1,"fp_px":0,"specificity":1.0},"NonTumor":{"annotated_px":0,"tn_px":0,"fp_px":0,"specificity":1.0}},"supervision_audit":{"polygon_counts":{},"annotated_pixel_counts":{},"accepted_tile_count":0,"usable_tile_count":0,"ignored_tile_count":0,"ignored_tile_share":0,"tile_label_counts":{},"tile_label_reason_counts":{},"ignored_tile_reasons":{},"selection_source_counts":{}},"warnings":[],"encoder_provenance":{"encoder_id":"hibou_b","encoder_backend":"hf_transformers","embedding_dim":768}}
             write_report_summary_markdown(path, payload)
             text = path.read_text(encoding="utf-8")
-            self.assertIn("encoder: hibou_b", text)
+            self.assertIn("Embedding encoder: hibou_b (hibou_b)", text)
 
     def test_make_report_main_with_encoder_provenance_writes_summary(self) -> None:
         payload, markdown = self._run_main_smoke(with_encoder_provenance=True)
         self.assertEqual(payload["encoder_provenance"]["encoder_id"], "current_timm")
-        self.assertIn("encoder: current_timm", markdown)
-        self.assertIn("backend: timm", markdown)
-        self.assertIn("dim: 768", markdown)
+        self.assertIn("Embedding encoder: Current ViT baseline (current_timm)", markdown)
+        self.assertIn("Embedding backend: timm", markdown)
+        self.assertIn("Embedding dimension: 768", markdown)
 
     def test_make_report_main_without_encoder_provenance_still_succeeds(self) -> None:
         payload, markdown = self._run_main_smoke(with_encoder_provenance=False)
         self.assertNotIn("encoder_provenance", payload)
-        self.assertIn("encoder: n/a", markdown)
+        self.assertIn("Embedding encoder: not recorded (n/a)", markdown)
 
 if __name__ == "__main__":
     unittest.main()

@@ -9,7 +9,10 @@ from apps.verification_results_viewer import load_verification_regions, load_ver
 
 class AnnotatorWorkflowPanelTests(unittest.TestCase):
     def test_auto_generated_project_tag(self):
-        self.assertEqual(default_project_tag(datetime(2026,1,2,3,4,5,tzinfo=timezone.utc)), 'training_20260102_030405')
+        self.assertEqual(
+            default_project_tag(now=datetime(2026, 1, 2, 3, 4, 5, tzinfo=timezone.utc)),
+            "training_20260102_030405__current_timm",
+        )
     def test_project_runner_command(self):
         cmd=build_stage1_project_command(config_path=Path('config/base.yaml'), project_tag='training_x', raw_dir=Path('data/raw'), annotations_dir=Path('data/annotations'), outputs_root=Path('outputs'), models_root=Path('models'))
         self.assertIn('scripts/run_stage1_project.py', ' '.join(cmd))

@@ -250,21 +250,49 @@ def _encoder_consensus(included: list[dict[str, Any]]) -> tuple[dict[str, Any] |
         top = next(iter(per_run.values()))
     return top, per_run, cons
 
+
+def _encoder_field(provenance: dict[str, Any] | None, key: str, default: str = "n/a") -> str:
+    """Return normalized encoder provenance field."""
+    if not isinstance(provenance, dict):
+        return default
+    value = provenance.get(key)
+    if value is None or value == "":
+        return default
+    return str(value)
+
+
+def _encoder_display_name(provenance: dict[str, Any] | None) -> str:
+    """Return friendly encoder display name."""
+    if not isinstance(provenance, dict):
+        return "not recorded"
+    return (
+        str(provenance.get("encoder_display_name") or "")
+        or str(provenance.get("encoder_id") or "")
+        or "not recorded"
+    )
+
 def build_training_summary_markdown(payload: dict[str, Any]) -> str:
     """Render plain markdown summary for CRD/editor consumption."""
     a = payload["aggregate_metrics"]
     class_agg = payload["aggregate_class_metrics"]
+    provenance = payload.get("encoder_provenance") if isinstance(payload.get("encoder_provenance"), dict) else None
+    encoder_name = _encoder_display_name(provenance)
+    encoder_id = _encoder_field(provenance, "encoder_id", "n/a")
+    encoder_backend = _encoder_field(provenance, "encoder_backend", "n/a")
+    encoder_model = _encoder_field(provenance, "encoder_model_name", "n/a")
+    encoder_pooling = _encoder_field(provenance, "encoder_pooling", "n/a")
+    encoder_dim = _encoder_field(provenance, "embedding_dim", "n/a")
     lines = [
         "# Stage 1 Training Development Summary",
         "",
         "Note: Metrics are computed on annotated training regions only (scribble labels),",
         "not on whole-slide unlabeled validation regions. Ignore/Unlabeled pixels are excluded.",
         "",
-        f"Embedding encoder: {((payload.get('encoder_provenance') or {}).get('encoder_display_name') or ((payload.get('encoder_provenance') or {}).get('encoder_id') or "not recorded"))} ({((payload.get('encoder_provenance') or {}).get('encoder_id') or "n/a")})",
-        f"Embedding backend: {((payload.get('encoder_provenance') or {}).get('encoder_backend') or "n/a")}",
-        f"Embedding model: {((payload.get('encoder_provenance') or {}).get('encoder_model_name') or "n/a")}",
-        f"Embedding pooling: {((payload.get('encoder_provenance') or {}).get('encoder_pooling') or "n/a")}",
-        f"Embedding dimension: {((payload.get('encoder_provenance') or {}).get('embedding_dim') or "n/a")}",
+        f"Embedding encoder: {encoder_name} ({encoder_id})",
+        f"Embedding backend: {encoder_backend}",
+        f"Embedding model: {encoder_model}",
+        f"Embedding pooling: {encoder_pooling}",
+        f"Embedding dimension: {encoder_dim}",
         "",
         "## Aggregate project summary",
         "",

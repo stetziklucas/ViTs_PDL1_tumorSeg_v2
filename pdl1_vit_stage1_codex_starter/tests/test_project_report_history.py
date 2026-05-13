@@ -1,6 +1,6 @@
 import json, tempfile, unittest
 from pathlib import Path
-from project_report_history import discover_project_summaries, discover_current_image_shared_reports, format_project_summary_label, format_current_image_report_label, auto_select_latest_indices
+from project_report_history import discover_project_summaries, discover_current_image_shared_reports, format_project_summary_label, format_current_image_report_label, auto_select_latest_indices, discover_encoder_comparison_reports, format_encoder_comparison_label
 
 class ProjectReportHistoryTests(unittest.TestCase):
     def test_discovery_and_labels(self):
@@ -33,3 +33,26 @@ class ProjectReportHistoryTests(unittest.TestCase):
             self.assertEqual(auto_select_latest_indices(pe, ie),(0,0))
 
 if __name__=='__main__': unittest.main()
+
+class EncoderComparisonHistoryTests(unittest.TestCase):
+    def test_discover_comparisons_and_label(self):
+        with tempfile.TemporaryDirectory() as d:
+            o=Path(d)/"outputs"
+            c=o/"reports_encoder_comparison_pr4_preview"; c.mkdir(parents=True)
+            (c/"encoder_comparison_summary.md").write_text("# cmp")
+            (c/"encoder_comparison_summary.json").write_text(json.dumps({"runs":[{"role":"baseline","run_tag":"btag","encoder_provenance":{"encoder_id":"current_timm"}},{"role":"candidate","run_tag":"ctag","encoder_provenance":{"encoder_id":"hibou_b"}}],"aggregate_metric_deltas":{"f1":0.0,"training_log_loss_total":0.01},"interpretation":{"final_masks_changed":False}}))
+            rows=discover_encoder_comparison_reports(o)
+            self.assertEqual(rows[0]["comparison_tag"],"pr4_preview")
+            self.assertEqual(rows[0]["baseline_tag"],"btag")
+            self.assertEqual(rows[0]["candidate_encoder_label"],"hibou_b")
+            self.assertIn("current_timm", format_encoder_comparison_label(rows[0]))
+            self.assertIn("masks same", format_encoder_comparison_label(rows[0]))
+
+    def test_malformed_json_keeps_markdown(self):
+        with tempfile.TemporaryDirectory() as d:
+            o=Path(d)/"outputs"; c=o/"reports_encoder_comparison_bad"; c.mkdir(parents=True)
+            (c/"encoder_comparison_summary.md").write_text("# cmp")
+            (c/"encoder_comparison_summary.json").write_text("{bad")
+            rows=discover_encoder_comparison_reports(o)
+            self.assertEqual(len(rows),1)
+            self.assertTrue(rows[0]["warnings"])

@@ -29,8 +29,10 @@ from project_case_discovery import discover_project_cases
 from report_history import newest_history_entry, oldest_history_entry, slugify_image_id
 from project_report_history import (
     auto_select_latest_indices,
+    discover_encoder_comparison_reports,
     discover_current_image_shared_reports,
     discover_project_summaries,
+    format_encoder_comparison_label,
     format_current_image_report_label,
     format_project_summary_label,
 )
@@ -814,6 +816,7 @@ def launch_napari_app(
     latest_project_tag = QLabel("Latest generated/shared project tag: none")
     selected_project_tag = QLabel("Selected project summary tag: none")
     selected_image_tag = QLabel("Selected current-image shared-report tag: none")
+    selected_comparison_tag = QLabel("Selected encoder comparison: none")
     project_counts = QLabel("READY case count: 0 | skipped case count: 0")
     project_details = QLabel("Current image included = false")
     preview_path_label = QLabel("Currently loaded preview path: none")
@@ -831,7 +834,7 @@ def launch_napari_app(
     encoder_hint = QLabel("Embedding encoder: n/a")
     encoder_note = QLabel("")
     encoder_note.setWordWrap(True)
-    project_combo = QComboBox(); image_combo = QComboBox()
+    project_combo = QComboBox(); image_combo = QComboBox(); comparison_combo = QComboBox()
     run_btn = QPushButton("Train model and run verification")
     show_log_toggle = QCheckBox("Show runner log"); show_log_toggle.setChecked(True)
     show_verification_toggle = QCheckBox("Debug: show raw verification labels"); show_verification_toggle.setChecked(False)
@@ -841,18 +844,18 @@ def launch_napari_app(
     project_log = QPlainTextEdit(); project_log.setReadOnly(True)
     workflow_panel.setMinimumWidth(280)
     workflow_panel.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Expanding)
-    for label in (workflow_status, latest_project_tag, selected_project_tag, selected_image_tag, project_counts, project_details, verification_status, preview_path_label):
+    for label in (workflow_status, latest_project_tag, selected_project_tag, selected_image_tag, selected_comparison_tag, project_counts, project_details, verification_status, preview_path_label):
         label.setWordWrap(True); label.setTextInteractionFlags(Qt.TextSelectableByMouse); label.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Minimum); label.setMinimumWidth(0)
-    for combo in (project_combo, image_combo):
+    for combo in (project_combo, image_combo, comparison_combo):
         combo.setMinimumWidth(0); combo.setSizeAdjustPolicy(QComboBox.AdjustToMinimumContentsLengthWithIcon); combo.setMinimumContentsLength(16); combo.view().setTextElideMode(Qt.ElideRight); combo.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
     preview_box.setLineWrapMode(QTextEdit.WidgetWidth); preview_box.setMinimumWidth(0); preview_box.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
     project_log.setLineWrapMode(QPlainTextEdit.WidgetWidth); project_log.setMinimumWidth(0); project_log.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.MinimumExpanding)
     splitter = QSplitter(); splitter.setOrientation(qt_orientation(Qt, "Vertical")); splitter.addWidget(preview_box); splitter.addWidget(project_log); splitter.setStretchFactor(0,5); splitter.setStretchFactor(1,1); splitter.setChildrenCollapsible(True); splitter.setCollapsible(0, True); splitter.setCollapsible(1, True); splitter.setMinimumWidth(0); splitter.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-    for w in (QLabel('Embedding encoder:'), encoder_combo, encoder_hint, encoder_note, run_btn, open_verification_viewer_btn, show_log_toggle, show_verification_toggle, QLabel('Project summaries'), project_combo, QLabel('Current image shared reports'), image_combo, workflow_status, latest_project_tag, selected_project_tag, selected_image_tag, project_counts, project_details, verification_status, preview_path_label, splitter): workflow_layout.addWidget(w)
+    for w in (QLabel('Embedding encoder:'), encoder_combo, encoder_hint, encoder_note, run_btn, open_verification_viewer_btn, show_log_toggle, show_verification_toggle, QLabel('Project summaries'), project_combo, QLabel('Current image shared reports'), image_combo, QLabel('Encoder benchmark comparisons'), comparison_combo, workflow_status, latest_project_tag, selected_project_tag, selected_image_tag, selected_comparison_tag, project_counts, project_details, verification_status, preview_path_label, splitter): workflow_layout.addWidget(w)
     viewer.window.add_dock_widget(workflow_panel, area='right', name='Stage 1 Workflow')
 
     project_runner = QProcess(viewer.window.qt_viewer); project_runner.setProcessChannelMode(QProcess.MergedChannels)
-    wf_state={'project_entries':[],'image_entries':[]}
+    wf_state={'project_entries':[],'image_entries':[],'comparison_entries':[]}
     verification_layer_name = "verification_prediction_labels"
     verification_labels_layer_name = "verification_annotation_labels"
     polygon_review_state: dict[str, Any] = {"saved": False, "face_color": None, "edge_color": None}
@@ -977,9 +980,11 @@ def launch_napari_app(
         project_details.setText(f"Current image included={str(current_included).lower()} | included: {included_short} | skipped: {skipped_short}")
         projects = discover_project_summaries(outputs_root=gui_outputs_root, current_image_id=image_id)
         images = discover_current_image_shared_reports(image_id=image_id, outputs_root=gui_outputs_root)
-        wf_state['project_entries']=projects; wf_state['image_entries']=images
+        comparisons=discover_encoder_comparison_reports(outputs_root=gui_outputs_root)
+        wf_state['project_entries']=projects; wf_state['image_entries']=images; wf_state['comparison_entries']=comparisons
         project_combo.blockSignals(True); project_combo.clear(); [project_combo.addItem(format_project_summary_label(e)) for e in projects]; project_combo.blockSignals(False)
         image_combo.blockSignals(True); image_combo.clear(); [image_combo.addItem(format_current_image_report_label(e)) for e in images]; image_combo.blockSignals(False)
+        comparison_combo.blockSignals(True); comparison_combo.clear(); [comparison_combo.addItem(format_encoder_comparison_label(e)) for e in comparisons]; comparison_combo.blockSignals(False)
         pidx,iidx=auto_select_latest_indices(projects,images)
         if select_tag:
             for i,e in enumerate(projects):
@@ -992,6 +997,13 @@ def launch_napari_app(
             selected_image_tag.setText("Selected current-image shared-report tag: none")
             if pidx is None:
                 _load_preview(None)
+        if comparisons:
+            comparison_combo.setCurrentIndex(0)
+            ce=comparisons[0]
+            _load_preview(Path(ce.get('markdown_path','')))
+            selected_comparison_tag.setText(f"Selected encoder comparison: {ce.get('comparison_tag')} | Baseline: {ce.get('baseline_tag')} | {ce.get('baseline_encoder_label')} | Candidate: {ce.get('candidate_tag')} | {ce.get('candidate_encoder_label')} | ΔF1: {format_display_float(ce.get('delta_f1'))} | Δtraining_log_loss_total: {format_display_float(ce.get('delta_training_log_loss_total'))} | tile probabilities changed: {ce.get('tile_probabilities_changed')} | pixel probability maps changed: {ce.get('pixel_probability_maps_changed')} | final masks changed: {ce.get('final_masks_changed')} | Preview: {ce.get('markdown_path')}")
+        else:
+            selected_comparison_tag.setText("Selected encoder comparison: none")
         _sync_verification_overlay()
 
 
@@ -1128,12 +1140,20 @@ def launch_napari_app(
     def _on_image_changed(index:int)->None:
         if index<0: return
         e=wf_state['image_entries'][index]; selected_image_tag.setText(f"Selected current-image shared-report tag: {e.get('project_tag')} | shared F1 {format_display_float(e.get('f1'))}"); _load_preview(Path(e.get('report_summary_md',''))); _sync_verification_overlay()
+    def _on_comparison_changed(index:int)->None:
+        if index<0 or index>=len(wf_state['comparison_entries']):
+            selected_comparison_tag.setText("Selected encoder comparison: none")
+            return
+        e=wf_state['comparison_entries'][index]
+        meta_note = "" if e.get("json_path") else " | metadata unavailable; markdown preview only"
+        selected_comparison_tag.setText(f"Selected encoder comparison: {e.get('comparison_tag')} | Baseline: {e.get('baseline_tag')} | {e.get('baseline_encoder_label')} | Candidate: {e.get('candidate_tag')} | {e.get('candidate_encoder_label')} | ΔF1: {format_display_float(e.get('delta_f1'))} | Δtraining_log_loss_total: {format_display_float(e.get('delta_training_log_loss_total'))} | tile probabilities changed: {e.get('tile_probabilities_changed')} | pixel probability maps changed: {e.get('pixel_probability_maps_changed')} | final masks changed: {e.get('final_masks_changed')} | Preview: {e.get('markdown_path')}{meta_note}")
+        _load_preview(Path(e.get('markdown_path','')))
     def _on_toggle(checked:bool)->None: project_log.setVisible(bool(checked))
     def _on_verification_toggle(_:bool)->None: _sync_verification_overlay()
 
     project_runner.readyReadStandardOutput.connect(_append_output); project_runner.started.connect(_started); project_runner.finished.connect(_finished)
     encoder_combo.currentIndexChanged.connect(lambda *_: _refresh_encoder_hint())
-    run_btn.clicked.connect(_run_project); open_verification_viewer_btn.clicked.connect(_open_verification_results_viewer); project_combo.currentIndexChanged.connect(_on_project_changed); image_combo.currentIndexChanged.connect(_on_image_changed); show_log_toggle.toggled.connect(_on_toggle); show_verification_toggle.toggled.connect(_on_verification_toggle)
+    run_btn.clicked.connect(_run_project); open_verification_viewer_btn.clicked.connect(_open_verification_results_viewer); project_combo.currentIndexChanged.connect(_on_project_changed); image_combo.currentIndexChanged.connect(_on_image_changed); comparison_combo.currentIndexChanged.connect(_on_comparison_changed); show_log_toggle.toggled.connect(_on_toggle); show_verification_toggle.toggled.connect(_on_verification_toggle)
     encoder_combo.setCurrentIndex(max(0, encoder_combo.findData(default_encoder_id)))
     _refresh_encoder_hint()
     _refresh_workflow()

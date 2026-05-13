@@ -119,5 +119,61 @@ def format_current_image_report_label(entry: dict[str,Any])->str:
     enc_label=enc.get('encoder_display_name') or enc.get('encoder_id') or 'encoder n/a'
     return f"{entry.get('project_tag','unknown')} | {enc_label} | {f1t}"
 
+def discover_encoder_comparison_reports(outputs_root: Path=Path('outputs'))->list[dict[str,Any]]:
+    rows=[]
+    for d in outputs_root.glob('reports_encoder_comparison_*'):
+        if not d.is_dir():
+            continue
+        md_path=d/'encoder_comparison_summary.md'
+        js_path=d/'encoder_comparison_summary.json'
+        if not md_path.exists():
+            continue
+        tag=d.name.replace('reports_encoder_comparison_','')
+        row={'comparison_tag':tag,'comparison_dir':d.as_posix(),'markdown_path':md_path.as_posix(),'json_path':js_path.as_posix() if js_path.exists() else None,'baseline_tag':'n/a','candidate_tag':'n/a','baseline_encoder_provenance':None,'candidate_encoder_provenance':None,'baseline_encoder_label':'n/a','candidate_encoder_label':'n/a','delta_f1':None,'delta_training_log_loss_total':None,'final_masks_changed':None,'tile_probabilities_changed':None,'pixel_probability_maps_changed':None,'hard_metrics_changed':None,'warnings':[]}
+        mtimes=[]
+        if js_path.exists():
+            mtimes.append(js_path.stat().st_mtime)
+            try:
+                js=_read_json(js_path) or {}
+            except Exception as exc:
+                js={}
+                row['warnings'].append(f'Failed to parse JSON: {exc}')
+            runs=js.get('runs',[]) if isinstance(js.get('runs'),list) else []
+            by_role={str(r.get('role')):r for r in runs if isinstance(r,dict)}
+            baseline=by_role.get('baseline',{})
+            candidate=by_role.get('candidate',{})
+            row['baseline_tag']=js.get('baseline_tag') or baseline.get('run_tag') or row['baseline_tag']
+            row['candidate_tag']=js.get('candidate_tag') or candidate.get('run_tag') or row['candidate_tag']
+            row['baseline_encoder_provenance']=js.get('baseline_encoder_provenance') or baseline.get('encoder_provenance')
+            row['candidate_encoder_provenance']=js.get('candidate_encoder_provenance') or candidate.get('encoder_provenance')
+            benc=row['baseline_encoder_provenance'] if isinstance(row['baseline_encoder_provenance'],dict) else {}
+            cenc=row['candidate_encoder_provenance'] if isinstance(row['candidate_encoder_provenance'],dict) else {}
+            row['baseline_encoder_label']=benc.get('encoder_display_name') or benc.get('encoder_id') or row['baseline_encoder_label']
+            row['candidate_encoder_label']=cenc.get('encoder_display_name') or cenc.get('encoder_id') or row['candidate_encoder_label']
+            agg=js.get('aggregate_metric_deltas',{}) if isinstance(js.get('aggregate_metric_deltas'),dict) else {}
+            row['delta_f1']=agg.get('f1') if agg else js.get('delta_f1')
+            row['delta_training_log_loss_total']=agg.get('training_log_loss_total') if agg else js.get('delta_training_log_loss_total')
+            interp=js.get('interpretation',{}) if isinstance(js.get('interpretation'),dict) else {}
+            row['final_masks_changed']=interp.get('final_masks_changed', js.get('final_masks_changed'))
+            row['tile_probabilities_changed']=interp.get('tile_probabilities_changed', js.get('tile_probabilities_changed'))
+            row['pixel_probability_maps_changed']=interp.get('pixel_probability_maps_changed', js.get('pixel_probability_maps_changed'))
+            row['hard_metrics_changed']=interp.get('hard_metrics_changed', js.get('hard_metrics_changed'))
+        mtimes.append(md_path.stat().st_mtime); mtimes.append(d.stat().st_mtime)
+        row['timestamp_utc']=datetime.fromtimestamp(max(mtimes), tz=timezone.utc).replace(microsecond=0).isoformat()
+        rows.append(row)
+    return sorted(rows,key=lambda r:(r.get('json_path') is not None,_parse_ts(r.get('timestamp_utc')),str(r.get('comparison_tag'))), reverse=True)
+
+def format_encoder_comparison_label(entry: dict[str,Any])->str:
+    tag=str(entry.get('comparison_tag') or 'unknown')
+    b=entry.get('baseline_encoder_label') or 'encoder comparison'
+    c=entry.get('candidate_encoder_label') or ''
+    if b=='n/a' or c in ('','n/a'):
+        return f"{tag} | encoder comparison"
+    d=entry.get('delta_f1')
+    d_txt=f"ΔF1 {format_display_float(d)}" if d is not None else "ΔF1 n/a"
+    m=entry.get('final_masks_changed')
+    m_txt="masks changed" if m is True else ("masks same" if m is False else "masks n/a")
+    return f"{tag} | {b} → {c} | {d_txt} | {m_txt}"
+
 def auto_select_latest_indices(project_entries:list[dict[str,Any]], image_entries:list[dict[str,Any]])->tuple[int|None,int|None]:
     return (0 if project_entries else None, 0 if image_entries else None)

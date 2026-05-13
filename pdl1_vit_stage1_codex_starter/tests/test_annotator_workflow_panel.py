@@ -96,6 +96,9 @@ class AnnotatorWorkflowPanelTests(unittest.TestCase):
     def test_no_local_qt_shadowing_in_viewer_open(self):
         import inspect
         src=inspect.getsource(launch_napari_app)
+        self.assertIn("Encoder benchmark comparisons", src)
+        self.assertIn("discover_encoder_comparison_reports", src)
+        self.assertIn("comparison_combo", src)
         open_idx = src.find("def _open_verification_results_viewer")
         self.assertNotEqual(open_idx, -1)
         open_src = src[open_idx:]
